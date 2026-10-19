@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TxHash } from "@/components/ui/tx-hash";
 import { useBuyFractionMutation } from "@/hooks/useSecondaryMarket";
+import { useTransferRestriction } from "@/hooks/useTransferRestriction";
+import { TransferBlocked } from "./TransferBlocked";
 import { listingImpliedYield, totalCost } from "@/lib/secondaryMarket";
 import type { ResaleListing } from "@/lib/api";
 
@@ -41,6 +43,8 @@ export function BuyFractionModal({
   // lands so the buyer can verify it on-chain.
   const [txHash, setTxHash] = useState<string | null>(null);
   const buyMutation = useBuyFractionMutation();
+  const restrictionCheck = useTransferRestriction(listing?.id, open);
+  const blockedBy = restrictionCheck.data?.restriction ?? null;
 
   // Reset whenever a different listing is opened.
   useEffect(() => {
@@ -151,6 +155,17 @@ export function BuyFractionModal({
             <Button variant="outline" onClick={() => onOpenChange(false)} data-testid="buy-done-btn">
               Done
             </Button>
+          ) : blockedBy ? (
+            <div className="flex w-full flex-col gap-3">
+              <TransferBlocked
+                restriction={blockedBy}
+                onRetry={() => void restrictionCheck.refetch()}
+                isRetrying={restrictionCheck.isFetching}
+              />
+              <Button variant="outline" onClick={() => onOpenChange(false)} data-testid="buy-cancel-btn">
+                Cancel
+              </Button>
+            </div>
           ) : (
             <>
               <Button variant="outline" onClick={() => onOpenChange(false)} data-testid="buy-cancel-btn">

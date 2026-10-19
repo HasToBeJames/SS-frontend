@@ -1597,6 +1597,7 @@ export async function fetchTimelockProposals(
   const res = await fetch(`${API_BASE}/admin/timelock/proposals`, {
     headers: authHeaders(token),
   });
+  if (res.status === 403) throw new ApiForbiddenError("Not a signer");
   if (!res.ok) throw new Error("Failed to fetch timelock proposals");
   const payload = await res.json();
   const proposals = Array.isArray(payload)
@@ -2299,4 +2300,82 @@ export async function confirmTwoFactorSetup(code: string, token?: string): Promi
     body: JSON.stringify({ code }),
   });
   if (!res.ok) return readAccountError(res, "Invalid verification code");
+}
+
+// ─── Issuer reputation (#490) ────────────────────────────────────────────
+
+export interface IssuerReputationEvent {
+  id: string;
+  /** e.g. "settled_on_time", "settled_late", "defaulted". */
+  event_type: string;
+  date: string;
+  score_delta: number;
+}
+
+export interface IssuerReputation {
+  wallet: string;
+  /** Null when the issuer has no settlement history yet. */
+  score: number | null;
+  history: IssuerReputationEvent[];
+}
+
+export async function fetchIssuerReputation(wallet: string): Promise<IssuerReputation> {
+  const res = await fetch(`${API_BASE}/issuers/${encodeURIComponent(wallet)}/reputation`);
+  if (res.status === 404) return { wallet, score: null, history: [] };
+  if (!res.ok) throw new Error("Failed to fetch issuer reputation");
+  const raw = await res.json();
+  return {
+    wallet: raw.wallet ?? wallet,
+    score: typeof raw.score === "number" ? raw.score : null,
+    history: Array.isArray(raw.history) ? raw.history : [],
+  };
+}
+
+// ─── Pending timelock changes (#492) ─────────────────────────────────────
+
+export interface PendingTimelockChange {
+  id: string;
+  parameter: string;
+  current_value: string;
+  proposed_value: string;
+  /** ISO timestamp at which the change can be executed. */
+  eta: string;
+}
+
+export async function fetchPendingTimelockChanges(): Promise<PendingTimelockChange[]> {
+  const res = await fetch(`${API_BASE}/governance/timelock/pending`);
+  if (!res.ok) throw new Error("Failed to fetch pending timelock changes");
+  const payload = await res.json();
+  const changes = Array.isArray(payload) ? payload : (payload?.changes ?? []);
+  return changes.map((c: any) => ({
+    id: String(c.id),
+    parameter: String(c.parameter),
+    current_value: String(c.current_value ?? c.currentValue ?? "—"),
+    proposed_value: String(c.proposed_value ?? c.proposedValue ?? "—"),
+    eta: String(c.eta),
+  }));
+}
+
+// ─── Transfer restriction pre-flight (#491) ──────────────────────────────
+
+export type TransferRestrictionType =
+  | "kyc_required"
+  | "jurisdiction_blocked"
+  | "accreditation_required";
+
+export interface TransferRestrictionCheck {
+  allowed: boolean;
+  restriction: TransferRestrictionType | null;
+}
+
+export async function fetchTransferRestriction(
+  listingId: string,
+): Promise<TransferRestrictionCheck> {
+  const res = await fetch(
+    `${API_BASE}/secondary-market/listings/${encodeURIComponent(listingId)}/transfer-check`,
+  );
+  if (!res.ok) throw new Error("Failed to check transfer restrictions");
+  const raw = await res.json();
+  const restriction = (raw.restriction ?? null) as TransferRestrictionType | null;
+  return { allowed: raw.allowed !== false && !restriction, restriction };
 }

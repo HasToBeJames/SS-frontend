@@ -12,7 +12,8 @@ import {
   useExecuteTimelockProposalMutation,
   useTimelockProposals,
 } from "@/hooks/useTimelockProposals";
-import type { TimelockProposal } from "@/lib/api";
+import { AccessDenied } from "@/components/common";
+import { ApiForbiddenError, type TimelockProposal } from "@/lib/api";
 
 function formatDateTime(value: string): string {
   if (!value) return "—";
@@ -180,6 +181,16 @@ export function TimelockProposalsPanel() {
         <CardContent className="space-y-3">
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (proposalsQuery.error instanceof ApiForbiddenError) {
+    return (
+      <Card data-testid="timelock-proposals-panel">
+        <CardContent>
+          <AccessDenied restriction="SignerOnly" compact />
         </CardContent>
       </Card>
     );
