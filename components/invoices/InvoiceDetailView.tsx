@@ -44,6 +44,9 @@ import { InvestorDemandMetrics } from "@/components/marketplace/InvestorDemandMe
 import { InvoiceClassificationBadges } from "@/components/marketplace/InvoiceClassificationBadges";
 import { InvoiceTagPills } from "@/components/marketplace/InvoiceTagPills";
 import { SettlementCountdown } from "@/components/marketplace/SettlementCountdown";
+import { InvoiceFraudReport } from "@/components/invoices/InvoiceFraudReport";
+import { AnnouncementFeed } from "@/components/invoices/AnnouncementFeed";
+import { SyndicatePanel } from "@/components/invoices/SyndicatePanel";
 import { InvoiceFraudReport, InvoiceUnderReviewBanner } from "@/components/invoices/InvoiceFraudReport";
 import { InvoiceRiskAlert } from "@/components/invoices/InvoiceRiskAlert";
 import { InvoiceBenchmarkCard } from "@/components/invoices/InvoiceBenchmarkCard";
@@ -440,6 +443,10 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
           </CardContent>
         </Card>
       )}
+
+      <SyndicatePanel invoiceId={invoice.id} />
+
+      <AnnouncementFeed invoiceId={invoice.id} />
 
       <InvoiceDocumentsTab
         invoiceId={invoice.id}

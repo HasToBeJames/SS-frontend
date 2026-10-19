@@ -2506,6 +2506,200 @@ export async function fetchTransferRestriction(
   const raw = await res.json();
   const restriction = (raw.restriction ?? null) as TransferRestrictionType | null;
   return { allowed: raw.allowed !== false && !restriction, restriction };
+// ---------------------------------------------------------------------------
+// Issuer announcements (#502)
+// ---------------------------------------------------------------------------
+
+export const ANNOUNCEMENT_CATEGORIES = [
+  "update",
+  "milestone",
+  "warning",
+  "event",
+] as const;
+
+export type AnnouncementCategory = (typeof ANNOUNCEMENT_CATEGORIES)[number];
+
+export interface InvoiceAnnouncement {
+  id: string;
+  category: AnnouncementCategory;
+  title: string;
+  /** ISO timestamp the announcement was posted on-chain. */
+  created_at: string;
+  /** IPFS hash (CID or ipfs:// URI) of the full announcement body. */
+  content_hash: string;
+}
+
+export interface InvoiceAnnouncementsResponse {
+  announcements: InvoiceAnnouncement[];
+  next_cursor?: string | null;
+  has_more: boolean;
+}
+
+export async function fetchInvoiceAnnouncements(
+  invoiceId: string,
+  cursor?: string,
+  limit = 5,
+): Promise<InvoiceAnnouncementsResponse> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.set("cursor", cursor);
+  const res = await fetch(
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/announcements?${params}`,
+  );
+  if (!res.ok) throw new Error("Failed to fetch announcements");
+  return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Syndicate co-investment (#507)
+// ---------------------------------------------------------------------------
+
+export interface SyndicateMember {
+  address: string;
+  amount: number;
+}
+
+export interface Syndicate {
+  id: string;
+  invoice_id: string;
+  lead: string;
+  min_co_invest: number;
+  target: number;
+  committed: number;
+  members: SyndicateMember[];
+  status: "open" | "executed" | "cancelled";
+}
+
+export interface InvoiceSyndicateResponse {
+  /** Whether the invoice is large enough to be funded by a syndicate. */
+  eligible: boolean;
+  syndicate: Syndicate | null;
+}
+
+export type SyndicateContractMethod =
+  | "create_syndicate"
+  | "join_syndicate"
+  | "exit_syndicate"
+  | "execute_syndicate";
+
+export async function fetchInvoiceSyndicate(
+  invoiceId: string,
+): Promise<InvoiceSyndicateResponse> {
+  const res = await fetch(
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/syndicate`,
+  );
+  if (!res.ok) throw new Error("Failed to fetch syndicate");
+  return res.json();
+}
+
+export async function submitSyndicateCall(
+  invoiceId: string,
+  method: SyndicateContractMethod,
+  wallet: string,
+  args: { min_co_invest?: number; amount?: number } = {},
+): Promise<{ success: boolean; tx_hash?: string }> {
+  const res = await fetch(
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/syndicate`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ method, wallet, ...args }),
+    },
+  );
+  if (!res.ok) throw new Error(`Syndicate call ${method} failed`);
+  return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Invoice pools (#508)
+// ---------------------------------------------------------------------------
+
+export interface PoolInvoice {
+  invoice_id: string;
+  name: string;
+  sector: string;
+  /** Share of the pool, in percent. Weights across a pool sum to 100. */
+  weight: number;
+  /** Current yield of the underlying invoice, in percent. */
+  yield_percentage: number;
+}
+
+export interface InvoicePool {
+  id: string;
+  name: string;
+  description?: string;
+  tvl: number;
+  invoices: PoolInvoice[];
+}
+
+export interface InvoicePoolsResponse {
+  pools: InvoicePool[];
+}
+
+export async function fetchInvoicePools(): Promise<InvoicePoolsResponse> {
+  const res = await fetch(`${API_BASE}/pools`);
+  if (!res.ok) throw new Error("Failed to fetch pools");
+  return res.json();
+}
+
+export async function fetchInvoicePool(id: string): Promise<InvoicePool> {
+  const res = await fetch(`${API_BASE}/pools/${encodeURIComponent(id)}`);
+  if (res.status === 404) throw new ApiNotFoundError("Pool not found");
+  if (!res.ok) throw new Error("Failed to fetch pool");
+  return res.json();
+}
+
+export interface InvestPoolResult {
+  success: boolean;
+  invested_amount: number;
+  tx_hash?: string;
+}
+
+/** Submits the `invest_pool` contract call: one transaction, all invoices. */
+export async function investInPool(
+  poolId: string,
+  amount: number,
+  wallet: string,
+): Promise<InvestPoolResult> {
+  const res = await fetch(`${API_BASE}/pools/${encodeURIComponent(poolId)}/invest`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ method: "invest_pool", amount, wallet }),
+  });
+  if (!res.ok) throw new Error("Pool investment failed");
+  return res.json();
+}
+
+// ---------------------------------------------------------------------------
+// Investor loyalty (#509)
+// ---------------------------------------------------------------------------
+
+export const LOYALTY_TIERS = ["bronze", "silver", "gold", "platinum"] as const;
+
+export type LoyaltyTierName = (typeof LOYALTY_TIERS)[number];
+
+export interface LoyaltyTierDefinition {
+  tier: LoyaltyTierName;
+  /** Cumulative investment volume needed to reach this tier. */
+  threshold: number;
+  /** Fee discount, in percent. */
+  fee_discount: number;
+  /** Yield boost, in percent. */
+  yield_boost: number;
+}
+
+export interface InvestorLoyalty {
+  tier: LoyaltyTierName;
+  cumulative_volume: number;
+  tiers: LoyaltyTierDefinition[];
+  /** ISO timestamp of the most recent promotion, if any. */
+  promoted_at?: string | null;
+}
+
+export async function fetchInvestorLoyalty(wallet: string): Promise<InvestorLoyalty> {
+  const res = await fetch(
+    `${API_BASE}/investors/${encodeURIComponent(wallet)}/loyalty`,
+  );
+  if (!res.ok) throw new Error("Failed to fetch loyalty");
 /* ─── Order book depth (#503) ─── */
 
 export interface OrderBookLevel {

@@ -51,6 +51,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { WatchlistButton } from "@/components/marketplace/WatchlistButton";
+import { MarketplaceViewTabs } from "@/components/pools/PoolList";
 import { Money, ExchangeRateDisclaimer } from "@/components/currency";
 import { CurrencyToggle } from "@/components/layout/CurrencyToggle";
 import { ArrowDown, ArrowUp, Loader2 } from "lucide-react";
@@ -727,6 +728,8 @@ export default function MarketplacePage() {
       <main className="container mx-auto px-4 py-8 pb-24 space-y-8">
         <TimelockPendingBanner />
         <div className="space-y-3">
+          <h1 className="text-2xl font-bold">Invoice Marketplace</h1>
+          <MarketplaceViewTabs active="invoices" />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="text-2xl font-bold">Invoice Marketplace</h1>
             <CurrencyToggle showRate={false} />

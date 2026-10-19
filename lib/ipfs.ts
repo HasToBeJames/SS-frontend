@@ -68,3 +68,21 @@ export function documentFileName(url: string, fallback = "invoice-document"): st
   // A bare CID has no extension — label it by what it is instead.
   return isCid(lastSegment) ? `${fallback}.pdf` : lastSegment;
 }
+
+/** Fetches text content from IPFS, trying each gateway until one answers. */
+export async function fetchIpfsText(reference: string): Promise<string> {
+  const candidates = ipfsGatewayCandidates(reference);
+  if (candidates.length === 0) throw new Error("Missing IPFS reference");
+
+  let lastError: unknown = null;
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) return await res.text();
+      lastError = new Error(`Gateway responded ${res.status}`);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Failed to load IPFS content");
+}
