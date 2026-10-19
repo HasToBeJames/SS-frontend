@@ -118,9 +118,9 @@ describe("persistence", () => {
   });
 
   it("ignores unknown stored currencies", () => {
-    localStorage.setItem(CURRENCY_STORAGE_KEY, "EUR");
+    localStorage.setItem(CURRENCY_STORAGE_KEY, "GBP");
     expect(readStoredCurrency()).toBeNull();
-    expect(isCurrency("EUR")).toBe(false);
+    expect(isCurrency("GBP")).toBe(false);
     expect(isCurrency("XLM")).toBe(true);
   });
 

@@ -4,15 +4,23 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { InvestmentAmountInput } from "@/components/invoices/InvestmentAmountInput";
+import { InvestCurrencySelector } from "@/components/invoices/InvestCurrencySelector";
 import { FeeTierDisplay } from "@/components/invoices/FeeTierDisplay";
 import { PriceImpactWarning } from "@/components/invoices/PriceImpactWarning";
 import { TopUpCta } from "@/components/wallet/TopUpCta";
 import { AccreditationGateSteps } from "@/components/invoices/AccreditationGateModal";
 import { useInvestMutation } from "@/hooks/useInvestments";
+import { useFxRate } from "@/hooks/useFxRate";
 import { useUsdcBalance } from "@/hooks/useUsdcBalance";
 import { useWallet } from "@/context/WalletContext";
 import { useAccreditation } from "@/context/AccreditationContext";
 import { formatUsdc, formatXLM } from "@/lib/format";
+import {
+  BASE_CURRENCY,
+  investErrorMessage,
+  isRateStale as isFxRateStale,
+  type InvestCurrency,
+} from "@/lib/investCurrency";
 import {
   Popover,
   PopoverContent,
@@ -38,23 +46,36 @@ export function InvestmentModal({
   const [isOpen, setIsOpen] = useState(false);
   const [validAmount, setValidAmount] = useState<number | null>(null);
   const [amountError, setAmountError] = useState<string | null>(null);
+  const [currency, setCurrency] = useState<InvestCurrency>(BASE_CURRENCY);
   const investMutation = useInvestMutation();
+  const fxRate = useFxRate(currency);
   const { address, network } = useWallet();
   const { balance, refresh } = useUsdcBalance(address, network);
 
   // A null balance means the balance is still unknown, which is not the same as
   // being underfunded, so it must not block the investment.
+  const isBaseCurrency = currency === BASE_CURRENCY;
   const insufficientBalance =
-    balance !== null && validAmount !== null && validAmount > balance;
+    isBaseCurrency && balance !== null && validAmount !== null && validAmount > balance;
+
+  const rateStale = fxRate.data ? isFxRateStale(fxRate.data.updated_at) : false;
+  // A non-base payment cannot be priced without a fresh oracle rate.
+  const fxBlocked = !isBaseCurrency && (!fxRate.data || rateStale);
 
   // Accreditation acknowledgement gate (issue #312): first-time investors
   // must complete the disclosure steps before the investment form appears.
   const { isAcknowledged } = useAccreditation();
 
-  const handleInvest = async () => {
-    if (validAmount === null || amountError !== null || insufficientBalance) return;
+  const currencyErrorMessage = investErrorMessage(investMutation.error, currency);
 
-    await investMutation.mutateAsync({ invoiceId, amount: validAmount });
+  const handleInvest = async () => {
+    if (validAmount === null || amountError !== null || insufficientBalance || fxBlocked) return;
+
+    await investMutation.mutateAsync({
+      invoiceId,
+      amount: validAmount,
+      ...(isBaseCurrency ? {} : { currency }),
+    });
     setIsOpen(false);
     setValidAmount(null);
     setAmountError(null);
@@ -67,7 +88,9 @@ export function InvestmentModal({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button data-testid="invest-button">Invest</Button>
+        <Button data-testid="invest-button" data-tour="invest-button">
+          Invest
+        </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0">
         {!isAcknowledged ? (
@@ -115,6 +138,22 @@ export function InvestmentModal({
               onErrorChange={setAmountError}
             />
 
+            <InvestCurrencySelector
+              currency={currency}
+              onCurrencyChange={setCurrency}
+              amount={validAmount}
+              rate={fxRate.data}
+              isRateLoading={!isBaseCurrency && fxRate.isLoading}
+              isRateError={!isBaseCurrency && fxRate.isError}
+              isRateStale={rateStale}
+            />
+
+            {investMutation.error && currencyErrorMessage && (
+              <p className="text-sm text-destructive" role="alert" data-testid="invest-currency-error">
+                {currencyErrorMessage}
+              </p>
+            )}
+
             {insufficientBalance && address && (
               <TopUpCta
                 address={address}
@@ -159,7 +198,8 @@ export function InvestmentModal({
                   validAmount === null ||
                   amountError !== null ||
                   investMutation.isPending ||
-                  insufficientBalance
+                  insufficientBalance ||
+                  fxBlocked
                 }
                 data-testid="investment-submit"
                 className="flex-1"

@@ -16,7 +16,7 @@
  */
 
 import { useCurrency } from "@/hooks/useCurrency";
-import { describeExchangeRate, formatUsd } from "@/lib/currency";
+import { describeExchangeRate, formatFiat, isFiatCurrency } from "@/lib/currency";
 import { formatXLM } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -29,14 +29,14 @@ interface MoneyProps {
 }
 
 export function Money({ xlm, xlmText, className }: MoneyProps) {
-  const { isConverted, convert, exchangeRate } = useCurrency();
+  const { currency, isConverted, convert, exchangeRate, isStale } = useCurrency();
   const amount = Number(xlm ?? 0);
 
-  if (!isConverted || !exchangeRate || !Number.isFinite(amount)) {
+  if (!isConverted || !exchangeRate || !isFiatCurrency(currency) || !Number.isFinite(amount)) {
     return <>{xlmText ?? formatXLM(amount)}</>;
   }
 
-  const disclaimer = describeExchangeRate(exchangeRate);
+  const disclaimer = describeExchangeRate(exchangeRate, Date.now(), currency);
 
   return (
     <span
@@ -44,8 +44,10 @@ export function Money({ xlm, xlmText, className }: MoneyProps) {
       title={disclaimer}
       data-testid="money-converted"
       data-xlm={amount}
+      data-currency={currency}
+      data-stale={isStale || undefined}
     >
-      {formatUsd(convert(amount))}
+      {formatFiat(convert(amount), currency)}
       <sup aria-hidden="true" className="ml-0.5 text-[0.6em] font-normal text-muted-foreground">
         *
       </sup>

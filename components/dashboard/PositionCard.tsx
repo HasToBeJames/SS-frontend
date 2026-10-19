@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { InvoiceStatusBadge } from "@/components/invoices/InvoiceStatusBadge";
 import { HoldingActionsMenu } from "@/components/dashboard/HoldingActionsMenu";
@@ -34,12 +35,23 @@ export function PositionCard({ position }: PositionCardProps) {
   const isKeyHolding = Boolean(position.key_id);
   const hasTransferableBalance = isKeyHolding && (position.quantity ?? 0) > 0;
   const canTopUp = position.status === "active" && (position.remaining_capacity ?? 0) > 0;
+  const isDefaulted = position.status === "defaulted";
 
   return (
     <Card data-testid="position-card">
       <CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="font-semibold">{position.invoice_title}</p>
+          {isDefaulted ? (
+            <Link
+              href={`/marketplace/${position.invoice_id}`}
+              className="font-semibold hover:underline"
+              data-testid="defaulted-position-link"
+            >
+              {position.invoice_title}
+            </Link>
+          ) : (
+            <p className="font-semibold">{position.invoice_title}</p>
+          )}
           <p className="text-sm text-muted-foreground">
             <span data-testid="position-committed">
               <Money
@@ -52,6 +64,15 @@ export function PositionCard({ position }: PositionCardProps) {
             <span data-testid="position-share">{shareDisplay}</span>
             {shareDisplay !== "—" ? " share" : null}
           </p>
+          {isDefaulted && (
+            <Link
+              href={`/marketplace/${position.invoice_id}`}
+              className="mt-1 inline-block text-xs text-red-600 underline hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+              data-testid="view-default-resolution"
+            >
+              View default resolution →
+            </Link>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {isKeyHolding && <HoldingActionsMenu position={position} />}

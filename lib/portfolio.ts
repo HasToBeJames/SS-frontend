@@ -4,7 +4,7 @@ export interface InvestmentPosition {
     invoice_id: string;
     invoice_title: string;
     committed_amount: number;
-    status: "active" | "settled" | "expired";
+    status: "active" | "settled" | "expired" | "defaulted";
     share_percent?: number | null;
     key_id?: string;
     key_title?: string;

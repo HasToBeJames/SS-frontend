@@ -1,3 +1,4 @@
+import { parseInvestError } from "@/lib/investCurrency";
 import type { InvestmentPosition } from "@/lib/portfolio";
 import type { KycTier } from "@/lib/kycTier";
 
@@ -10,9 +11,11 @@ export interface Invoice {
   amount: number;
   raised: number;
   investor_count: number;
-  status: "draft" | "pending" | "open" | "funded" | "settled" | "rejected";
+  status: "draft" | "pending" | "open" | "funded" | "settled" | "rejected" | "defaulted";
   due_date: string;
   yield_percentage?: number;
+  /** Price of one fraction in XLM; the calculator assumes 1 XLM when absent. */
+  fraction_price?: number;
   /** Minimum investment amount in XLM required for this invoice (#436). */
   min_investment?: number;
   /** Amount the invoice must raise before it can proceed (#462). */
@@ -44,6 +47,8 @@ export interface Invoice {
    * because older backend responses may not populate it yet — UI must
    * degrade gracefully when absent rather than assume it's always present. */
   maturity_date?: string | null;
+  /** Late penalty accrued on-chain after the grace period (issue #498). */
+  late_penalty_accrued?: number | null;
 }
 
 /** Category tabs on the marketplace homepage (#452). */
@@ -306,6 +311,21 @@ export async function fetchXlmUsdRate(): Promise<XlmUsdRate> {
   return res.json();
 }
 
+/**
+ * FX oracle rates for the display-currency toggle (#504): the value of 1 XLM
+ * in USDC, EURC and NGNC, plus when the oracle last updated.
+ */
+export interface FxRatesResponse {
+  rates: { USD?: number; EUR?: number; NGN?: number };
+  updated_at: string;
+}
+
+export async function fetchFxRates(): Promise<FxRatesResponse> {
+  const res = await fetch(`${API_BASE}/rates/fx`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to fetch FX rates");
+  return res.json();
+}
+
 export interface InvestInInvoiceResult {
   success: boolean;
   invested_amount: number;
@@ -318,13 +338,19 @@ export interface InvestInInvoiceResult {
 export async function investInInvoice(
   invoiceId: string,
   amount: number,
+  currency?: string,
 ): Promise<InvestInInvoiceResult> {
   const res = await fetch(`${API_BASE}/invoices/${invoiceId}/invest`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ amount }),
+    body: JSON.stringify(currency ? { amount, currency } : { amount }),
   });
-  if (!res.ok) throw new Error("Investment failed");
+  if (!res.ok) {
+    if (currency) {
+      throw parseInvestError(await res.json().catch(() => null));
+    }
+    throw new Error("Investment failed");
+  }
   return res.json();
 }
 
@@ -2224,6 +2250,108 @@ export async function fetchPublicFeeHistory(): Promise<FeeChangeLogEntry[]> {
   return res.json();
 }
 
+/* ─── Invoice risk, benchmarks, reports, and contract registry ─────────── */
+
+export type InvoiceRiskType = "funding_risk" | "late_payment" | "default_proximity";
+export type InvoiceRiskSeverity = "low" | "medium" | "high";
+
+export interface InvoiceRiskStatus {
+  active: boolean;
+  risk_type: InvoiceRiskType | null;
+  severity: InvoiceRiskSeverity | null;
+  recommended_action: string | null;
+  resolved_at?: string | null;
+}
+
+export async function fetchInvoiceRiskStatus(invoiceId: string): Promise<InvoiceRiskStatus> {
+  const res = await fetch(`${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/risk-status`);
+  if (!res.ok) throw new Error("Failed to fetch invoice risk status");
+  return res.json();
+}
+
+export interface InvoiceBenchmark {
+  sector: string;
+  invoice_yield: number;
+  sector_avg_yield: number;
+  invoice_avg_settlement_days: number | null;
+  sector_avg_settlement_days: number;
+  issuer_default_rate: number;
+  sector_default_rate: number;
+}
+
+export async function fetchInvoiceBenchmark(invoiceId: string): Promise<InvoiceBenchmark> {
+  const res = await fetch(`${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/benchmark`);
+  if (!res.ok) throw new Error("Failed to fetch invoice benchmark");
+  return res.json();
+}
+
+export const INVOICE_REPORT_REASONS = [
+  "misrepresentation",
+  "false_documents",
+  "non_delivery",
+  "other",
+] as const;
+export type InvoiceReportReason = (typeof INVOICE_REPORT_REASONS)[number];
+
+export interface InvoiceReportStatus {
+  active_reports: number;
+  reported_by_wallet: boolean;
+}
+
+export async function fetchInvoiceReportStatus(
+  invoiceId: string,
+  wallet?: string | null,
+): Promise<InvoiceReportStatus> {
+  const params = wallet ? `?wallet=${encodeURIComponent(wallet)}` : "";
+  const res = await fetch(
+    `${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/report-status${params}`,
+  );
+  if (!res.ok) throw new Error("Failed to fetch invoice report status");
+  return res.json();
+}
+
+export async function submitInvoiceReport(
+  invoiceId: string,
+  input: { reason: InvoiceReportReason; evidence_hash: string; wallet: string },
+  token?: string,
+): Promise<{ report_id: string; transaction_hash?: string }> {
+  const res = await fetch(`${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/reports`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(token) },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(await readErrorMessage(res, "Failed to submit invoice report"));
+  return res.json();
+}
+
+export interface ContractVersion {
+  name: string;
+  current_version: string;
+  address: string;
+  last_upgraded_at: string;
+  compatibility_status: "current" | "outdated";
+}
+
+export interface ContractUpgrade {
+  id: string;
+  contract_name: string;
+  from_version: string;
+  to_version: string;
+  upgraded_at: string;
+}
+
+export interface ContractRegistryResponse {
+  contracts: ContractVersion[];
+  recent_upgrades: ContractUpgrade[];
+}
+
+export async function fetchContractRegistry(token?: string): Promise<ContractRegistryResponse> {
+  const res = await fetch(`${API_BASE}/admin/contracts`, { headers: authHeaders(token) });
+  if (res.status === 403) throw new ApiForbiddenError();
+  if (!res.ok) throw new Error("Failed to fetch contract registry");
+  return res.json();
+}
+
 /* ─── Investor account settings (#444) ──────────────────────────────────── */
 
 export interface AccountProfile {
@@ -2378,4 +2506,31 @@ export async function fetchTransferRestriction(
   const raw = await res.json();
   const restriction = (raw.restriction ?? null) as TransferRestrictionType | null;
   return { allowed: raw.allowed !== false && !restriction, restriction };
+/* ─── Order book depth (#503) ─── */
+
+export interface OrderBookLevel {
+  /** Price per fraction, in XLM. */
+  price: number;
+  /** Fractions open at this price (not cumulative). */
+  quantity: number;
+}
+
+export interface InvoiceOrderBook {
+  /** Open buy orders. */
+  bids: OrderBookLevel[];
+  /** Open listings. */
+  asks: OrderBookLevel[];
+  /** Mid-price from the API; derived from best bid and ask when absent. */
+  mid_price?: number | null;
+}
+
+export async function fetchInvoiceOrderBook(
+  invoiceId: string,
+  signal?: AbortSignal,
+): Promise<InvoiceOrderBook> {
+  const res = await fetch(`${API_BASE}/invoices/${encodeURIComponent(invoiceId)}/orderbook`, {
+    signal,
+  });
+  if (!res.ok) throw new Error("Failed to fetch order book");
+  return res.json();
 }

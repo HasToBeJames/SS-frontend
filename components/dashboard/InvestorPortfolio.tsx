@@ -9,14 +9,17 @@ import { PortfolioRowSkeleton } from "@/components/ui/skeletons";
 import { PositionCard } from "@/components/dashboard/PositionCard";
 import { PayoutHistoryTable } from "@/components/dashboard/PayoutHistoryTable";
 import { VestingProgressWidget } from "@/components/dashboard/VestingProgressWidget";
+import { YieldVestingSection } from "@/components/dashboard/YieldVestingSection";
 import { DividendEarningsCard } from "@/components/dashboard/DividendEarningsCard";
 import { usePortfolio } from "@/hooks/usePortfolio";
 import { calculateActiveTotal } from "@/lib/portfolio";
 import { Money, ExchangeRateDisclaimer } from "@/components/currency";
+import { useStellarWallet } from "@/hooks/useStellarWallet";
 
 export function InvestorPortfolio() {
   const [activeTab, setActiveTab] = useState<"active" | "history" | "payouts">("active");
   const { data, isLoading, isFetching } = usePortfolio();
+  const { address } = useStellarWallet();
 
   // Show full skeleton only on initial load
   if (isLoading || !data) {
@@ -105,12 +108,20 @@ export function InvestorPortfolio() {
             Payout History
           </button>
         </div>
-        <Link
-          href="/investor/settlements"
-          className="pb-2 text-sm text-primary hover:underline"
-        >
-          Claim settlements
-        </Link>
+        <div className="flex gap-4 pb-2">
+          <Link
+            href="/investor/snapshots"
+            className="text-sm text-primary hover:underline"
+          >
+            Snapshot distributions
+          </Link>
+          <Link
+            href="/investor/settlements"
+            className="text-sm text-primary hover:underline"
+          >
+            Claim settlements
+          </Link>
+        </div>
       </div>
 
       {activeTab === "active" ? (
@@ -151,6 +162,9 @@ export function InvestorPortfolio() {
       )}
 
       <VestingProgressWidget positions={positions} />
+
+      {/* Yield vesting schedule for settled invoices (#479) */}
+      <YieldVestingSection walletAddress={address} />
     </div>
   );
 }

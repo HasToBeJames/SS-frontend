@@ -6,12 +6,15 @@ import { investInInvoice, transferInvoiceFractions, transferInvoicePosition } fr
 import type { InvoiceDetail } from "@/lib/api";
 import { toast } from "sonner";
 import { getNetwork, getExplorerUrl } from "@/lib/stellar";
+import { investErrorMessage, type InvestCurrency } from "@/lib/investCurrency";
 import { INVOICES_QUERY_KEY } from "./useInvoices";
 import { PORTFOLIO_QUERY_KEY } from "./usePortfolio";
 
 interface InvestMutationVars {
   invoiceId: string;
   amount: number;
+  /** Payment currency (issue #497); omitted for the default base-currency flow. */
+  currency?: InvestCurrency;
 }
 
 /** One toast id per invoice so the pending state morphs into the resolved
@@ -28,8 +31,10 @@ export function useInvestMutation() {
   const mutateRef = useRef<(vars: InvestMutationVars) => void>(() => {});
 
   const mutation = useMutation({
-    mutationFn: ({ invoiceId, amount }: InvestMutationVars) =>
-      investInInvoice(invoiceId, amount),
+    mutationFn: ({ invoiceId, amount, currency }: InvestMutationVars) =>
+      currency
+        ? investInInvoice(invoiceId, amount, currency)
+        : investInInvoice(invoiceId, amount),
 
     onMutate: async ({ invoiceId, amount }) => {
       // Transaction status toast, shown synchronously and immediately on
@@ -65,26 +70,32 @@ export function useInvestMutation() {
       return { previous };
     },
 
-    onError: (_err, vars, context) => {
+    onError: (err, vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(["invoice", vars.invoiceId], context.previous);
       }
-      toast.error("Investment failed. Your progress bar has been restored.", {
-        id: investTxToastId(vars.invoiceId),
-        action: {
-          label: "Retry",
-          onClick: () => mutateRef.current(vars),
+      const currencyMessage = vars.currency
+        ? investErrorMessage(err, vars.currency)
+        : null;
+      toast.error(
+        currencyMessage ?? "Investment failed. Your progress bar has been restored.",
+        {
+          id: investTxToastId(vars.invoiceId),
+          action: {
+            label: "Retry",
+            onClick: () => mutateRef.current(vars),
+          },
         },
-      });
+      );
     },
 
-    onSuccess: async (data, { invoiceId, amount }) => {
+    onSuccess: async (data, { invoiceId, amount, currency }) => {
       const network = await getNetwork();
       const explorerUrl =
         data.tx_hash && network ? getExplorerUrl(data.tx_hash, network) : null;
 
       toast.success(
-        `Investment of ${amount.toLocaleString()} XLM committed successfully`,
+        `Investment of ${amount.toLocaleString()} ${currency ?? "XLM"} committed successfully`,
         {
           id: investTxToastId(invoiceId),
           duration: 5000,

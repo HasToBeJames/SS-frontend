@@ -35,14 +35,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <WalletProvider>
           <AuthProvider>
             {/* #437 — one shared display currency + live XLM/USD rate for the app */}
-            <CurrencyProvider>{children}</CurrencyProvider>
-            <PlatformOnboardingTour />
-            <Toaster position="top-right" />
-            <AccreditationProvider>
-              {children}
-              <PlatformOnboardingTour />
-              <Toaster position="top-right" />
-            </AccreditationProvider>
+            <CurrencyProvider>
+              <AccreditationProvider>
+                {children}
+                <PlatformOnboardingTour />
+                <Toaster position="top-right" />
+              </AccreditationProvider>
+            </CurrencyProvider>
           </AuthProvider>
         </WalletProvider>
       </QueryClientProvider>

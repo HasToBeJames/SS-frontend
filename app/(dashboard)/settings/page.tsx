@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CurrencySettings } from "@/components/settings/CurrencySettings";
+import { RestartTourSettings } from "@/components/settings/RestartTourSettings";
 import { NetworkSelector } from "@/components/network/NetworkSelector";
 
 // #437 — general settings page; hosts the display-currency toggle.
@@ -10,6 +11,7 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-semibold">Settings</h1>
       <CurrencySettings />
       <NetworkSelector />
+      <RestartTourSettings />
       <Link
         href="/settings/notifications"
         className="inline-block text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"

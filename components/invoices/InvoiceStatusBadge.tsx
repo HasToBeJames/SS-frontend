@@ -18,6 +18,7 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
     settled: { label: "Settled", variant: "ghost", tooltip: "Investors have received their returns" },
     expired: { label: "Expired", variant: "destructive", tooltip: "This invoice did not reach its funding target in time" },
     rejected: { label: "Rejected", variant: "destructive", tooltip: "This invoice was rejected during review" },
+    defaulted: { label: "Defaulted", variant: "destructive", tooltip: "The seller defaulted on this invoice. Recovery distribution may be in progress." },
 };
 
 export function InvoiceStatusBadge({ status }: InvoiceStatusBadgeProps) {

@@ -75,7 +75,9 @@ describe("CurrencyToggle", () => {
 
   it("has accessible labels describing each target currency", () => {
     render(<CurrencyToggle />);
-    expect(screen.getByRole("button", { name: "Show values in USD" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show values in USDC" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show values in EURC" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show values in NGNC" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Show values in XLM" })).toBeInTheDocument();
   });
 });

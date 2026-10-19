@@ -15,7 +15,7 @@
 
 import { AlertTriangle } from "lucide-react";
 import { useCurrency } from "@/hooks/useCurrency";
-import { CURRENCIES, formatRate } from "@/lib/currency";
+import { CURRENCIES, CURRENCY_LABELS, formatRate, isFiatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 
 interface CurrencyToggleProps {
@@ -26,10 +26,10 @@ interface CurrencyToggleProps {
 
 export function CurrencyToggle({ className, showRate = true }: CurrencyToggleProps) {
   const { currency, setCurrency, rate, isStale, rateError, rateLoading } = useCurrency();
-  const usdUnavailable = currency === "USD" && rate === null && !rateLoading;
+  const usdUnavailable = isFiatCurrency(currency) && rate === null && !rateLoading;
 
   return (
-    <div className={cn("flex items-center gap-2", className)} data-testid="currency-toggle">
+    <div className={cn("flex flex-wrap items-center gap-2", className)} data-testid="currency-toggle">
       <div
         role="group"
         aria-label="Display currency"
@@ -42,7 +42,7 @@ export function CurrencyToggle({ className, showRate = true }: CurrencyTogglePro
               key={option}
               type="button"
               aria-pressed={active}
-              aria-label={`Show values in ${option}`}
+              aria-label={`Show values in ${CURRENCY_LABELS[option]}`}
               onClick={() => setCurrency(option)}
               data-testid={`currency-option-${option.toLowerCase()}`}
               className={cn(
@@ -53,7 +53,7 @@ export function CurrencyToggle({ className, showRate = true }: CurrencyTogglePro
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {option}
+              {CURRENCY_LABELS[option]}
             </button>
           );
         })}
@@ -61,7 +61,7 @@ export function CurrencyToggle({ className, showRate = true }: CurrencyTogglePro
 
       {showRate && rate !== null && (
         <span className="text-xs text-muted-foreground" data-testid="currency-rate">
-          1 XLM ≈ {formatRate(rate)}
+          1 XLM ≈ {formatRate(rate, isFiatCurrency(currency) ? currency : "USD")}
         </span>
       )}
 
@@ -79,6 +79,12 @@ export function CurrencyToggle({ className, showRate = true }: CurrencyTogglePro
           <span className="sr-only">
             {isStale ? "Exchange rate may be stale" : "Exchange rate unavailable"}
           </span>
+        </span>
+      )}
+
+      {isStale && (
+        <span className="text-xs text-amber-600 dark:text-amber-400" data-testid="stale-rate-warning">
+          Rate may be out of date
         </span>
       )}
     </div>

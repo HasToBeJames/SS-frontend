@@ -20,28 +20,35 @@
  */
 
 import { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { fetchFxRates } from "@/lib/api";
 import {
   CURRENCY_STORAGE_KEY,
   DEFAULT_CURRENCY,
   RATE_REFRESH_INTERVAL_MS,
   convertXlmToUsd,
-  fetchXlmUsdRate,
-  formatUsd,
+  formatFiat,
   isCurrency,
+  isFiatCurrency,
   isRateStale,
+  parseFxRates,
+  rateFor,
   readStoredCurrency,
   readStoredRate,
   writeStoredCurrency,
   writeStoredRate,
   type Currency,
   type ExchangeRate,
+  type FxRates,
 } from "@/lib/currency";
 
 export interface CurrencyContextValue {
   currency: Currency;
   setCurrency: (currency: Currency) => void;
   toggleCurrency: () => void;
-  /** USD value of 1 XLM, or null until a rate is known. */
+  /**
+   * Value of 1 XLM in the selected display currency (USD while XLM is
+   * selected), or null until a rate is known.
+   */
   rate: number | null;
   /** Full rate record (value + fetch time), or null until known. */
   exchangeRate: ExchangeRate | null;
@@ -79,15 +86,18 @@ export function formatXlmDefault(xlmAmount: number): string {
 
 interface CurrencyProviderProps {
   children: React.ReactNode;
-  /** Injected in tests; defaults to the Horizon order-book fetch. */
+  /** Injected in tests; fetches only the XLM → USD rate. */
   fetchRate?: () => Promise<number>;
+  /** Injected in tests; defaults to the FX oracle (USDC, EURC, NGNC). */
+  fetchRates?: () => Promise<FxRates>;
   /** Injected in tests; defaults to 5 minutes. */
   refreshIntervalMs?: number;
 }
 
 export function CurrencyProvider({
   children,
-  fetchRate = fetchXlmUsdRate,
+  fetchRate,
+  fetchRates,
   refreshIntervalMs = RATE_REFRESH_INTERVAL_MS,
 }: CurrencyProviderProps) {
   const [currency, setCurrencyState] = useState<Currency>(DEFAULT_CURRENCY);
@@ -103,9 +113,11 @@ export function CurrencyProvider({
   // Latest fetcher, read through a ref so the polling effect is not restarted
   // when a caller passes a new function identity.
   const fetchRateRef = useRef(fetchRate);
+  const fetchRatesRef = useRef(fetchRates);
   useEffect(() => {
     fetchRateRef.current = fetchRate;
-  }, [fetchRate]);
+    fetchRatesRef.current = fetchRates;
+  }, [fetchRate, fetchRates]);
 
   // Restore the saved preference and cached rate after mount.
   useEffect(() => {
@@ -131,9 +143,24 @@ export function CurrencyProvider({
     if (inFlight.current) return;
     inFlight.current = true;
     try {
-      const rate = await fetchRateRef.current();
-      if (!mounted.current) return;
-      const next: ExchangeRate = { rate, fetchedAt: Date.now() };
+      let next: ExchangeRate;
+      if (fetchRatesRef.current || !fetchRateRef.current) {
+        const fx = fetchRatesRef.current
+          ? await fetchRatesRef.current()
+          : parseFxRates(await fetchFxRates());
+        if (!mounted.current) return;
+        if (!fx.rates.USD) throw new Error("FX rates are missing USD");
+        next = {
+          rate: fx.rates.USD,
+          fetchedAt: Date.now(),
+          rates: fx.rates,
+          oracleUpdatedAt: fx.updatedAt,
+        };
+      } else {
+        const rate = await fetchRateRef.current();
+        if (!mounted.current) return;
+        next = { rate, fetchedAt: Date.now() };
+      }
       setExchangeRate(next);
       writeStoredRate(next);
       setRateError(false);
@@ -170,8 +197,10 @@ export function CurrencyProvider({
     setCurrency(currency === "XLM" ? "USD" : "XLM");
   }, [currency, setCurrency]);
 
-  const rate = exchangeRate?.rate ?? null;
-  const isConverted = currency === "USD" && rate !== null;
+  const rate = isFiatCurrency(currency)
+    ? rateFor(exchangeRate, currency)
+    : (exchangeRate?.rate ?? null);
+  const isConverted = isFiatCurrency(currency) && rate !== null;
 
   const convert = useCallback(
     (xlmAmount: number) => (isConverted ? convertXlmToUsd(xlmAmount, rate!) : xlmAmount),
@@ -180,10 +209,10 @@ export function CurrencyProvider({
 
   const format = useCallback(
     (xlmAmount: number, xlmText?: string) =>
-      isConverted
-        ? formatUsd(convertXlmToUsd(xlmAmount, rate!))
+      isConverted && isFiatCurrency(currency)
+        ? formatFiat(convertXlmToUsd(xlmAmount, rate!), currency)
         : (xlmText ?? formatXlmDefault(xlmAmount)),
-    [isConverted, rate],
+    [isConverted, currency, rate],
   );
 
   const value = useMemo<CurrencyContextValue>(

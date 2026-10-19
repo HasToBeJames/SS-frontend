@@ -36,10 +36,13 @@ export function requestOnboardingTourReplay(): void {
 }
 
 /**
- * Controls visibility of the first-visit platform tour (issue #349).
- * Tour auto-starts for unauthenticated visitors who have never completed it.
+ * Controls visibility of the investor onboarding tour (#505).
+ *
+ * The tour starts once, when a wallet is connected and the tour has never
+ * been completed or skipped. Completing or skipping stores a flag in
+ * localStorage so it never starts again until "Restart tour" clears it.
  */
-export function useOnboardingTour(isAuthenticated: boolean) {
+export function useOnboardingTour(isWalletConnected: boolean) {
   const [isActive, setIsActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
 
@@ -53,18 +56,15 @@ export function useOnboardingTour(isAuthenticated: boolean) {
     setIsActive(false);
   }, []);
 
-  const skip = useCallback(() => {
-    markOnboardingTourCompleted();
-    setIsActive(false);
-  }, []);
+  const skip = complete;
 
   useEffect(() => {
-    if (isAuthenticated || typeof window === "undefined") return;
+    if (!isWalletConnected || typeof window === "undefined") return;
     if (isOnboardingTourCompleted()) return;
-    // Defer one tick so the landing UI mounts before the overlay appears.
+    // Defer one tick so the page mounts before the overlay appears.
     const t = window.setTimeout(() => setIsActive(true), 300);
     return () => window.clearTimeout(t);
-  }, [isAuthenticated]);
+  }, [isWalletConnected]);
 
   useEffect(() => {
     const onReplay = () => start();

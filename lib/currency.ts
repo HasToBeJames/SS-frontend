@@ -19,10 +19,28 @@
  * testnet order books carry no real market price.
  */
 
-export type Currency = "XLM" | "USD";
+export type FiatCurrency = "USD" | "EUR" | "NGN";
+export type Currency = "XLM" | FiatCurrency;
 
 /** Order shown in the toggle. */
-export const CURRENCIES: readonly Currency[] = ["USD", "XLM"] as const;
+export const CURRENCIES: readonly Currency[] = ["USD", "EUR", "NGN", "XLM"] as const;
+
+/** Stablecoin each display currency is quoted in (#504). */
+export const CURRENCY_LABELS: Record<Currency, string> = {
+  XLM: "XLM",
+  USD: "USDC",
+  EUR: "EURC",
+  NGN: "NGNC",
+};
+
+export const FIAT_CURRENCIES: readonly FiatCurrency[] = ["USD", "EUR", "NGN"] as const;
+
+export function isFiatCurrency(value: unknown): value is FiatCurrency {
+  return value === "USD" || value === "EUR" || value === "NGN";
+}
+
+/** The FX oracle rate is flagged stale once it is older than one hour (#504). */
+export const FX_ORACLE_STALE_AFTER_MS = 60 * 60_000;
 
 /** Currency shown until the user picks one. */
 export const DEFAULT_CURRENCY: Currency = "XLM";
@@ -53,10 +71,14 @@ export interface ExchangeRate {
   rate: number;
   /** Epoch ms when the rate was fetched. */
   fetchedAt: number;
+  /** Value of 1 XLM in each display currency, when the FX oracle supplied them. */
+  rates?: Partial<Record<FiatCurrency, number>>;
+  /** Epoch ms the FX oracle last updated its rates. */
+  oracleUpdatedAt?: number;
 }
 
 export function isCurrency(value: unknown): value is Currency {
-  return value === "XLM" || value === "USD";
+  return value === "XLM" || isFiatCurrency(value);
 }
 
 function isValidRate(value: unknown): value is number {
@@ -94,7 +116,19 @@ export function readStoredRate(): ExchangeRate | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<ExchangeRate>;
     if (!isValidRate(parsed?.rate) || typeof parsed.fetchedAt !== "number") return null;
-    return { rate: parsed.rate, fetchedAt: parsed.fetchedAt };
+    const rates: Partial<Record<FiatCurrency, number>> = {};
+    for (const code of FIAT_CURRENCIES) {
+      const value = parsed.rates?.[code];
+      if (isValidRate(value)) rates[code] = value;
+    }
+    return {
+      rate: parsed.rate,
+      fetchedAt: parsed.fetchedAt,
+      ...(Object.keys(rates).length > 0 ? { rates } : {}),
+      ...(typeof parsed.oracleUpdatedAt === "number"
+        ? { oracleUpdatedAt: parsed.oracleUpdatedAt }
+        : {}),
+    };
   } catch {
     return null;
   }
@@ -165,6 +199,13 @@ export function convertXlmToUsd(xlmAmount: number, rate: number): number {
   return xlmAmount * rate;
 }
 
+/** Value of 1 XLM in `currency`, or null when no such rate is known. */
+export function rateFor(rate: ExchangeRate | null, currency: Currency): number | null {
+  if (!rate || !isFiatCurrency(currency)) return null;
+  const value = rate.rates?.[currency] ?? (currency === "USD" ? rate.rate : undefined);
+  return isValidRate(value) ? value : null;
+}
+
 const usdFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
@@ -177,14 +218,34 @@ export function formatUsd(amount: number): string {
   return usdFormatter.format(Number.isFinite(amount) ? amount : 0);
 }
 
-/** Rate with enough precision for a sub-dollar asset: "$0.2221". */
-export function formatRate(rate: number): string {
-  return `$${rate.toFixed(4)}`;
+const fiatFormatters: Record<FiatCurrency, Intl.NumberFormat> = {
+  USD: usdFormatter,
+  EUR: new Intl.NumberFormat("en-US", { style: "currency", currency: "EUR" }),
+  NGN: new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN" }),
+};
+
+/** "$1,234.56" / "€1,234.56" / "₦1,234.56". */
+export function formatFiat(amount: number, currency: FiatCurrency): string {
+  return fiatFormatters[currency].format(Number.isFinite(amount) ? amount : 0);
 }
 
-/** True when the rate should be flagged as out of date. */
+/** Rate with enough precision for a sub-dollar asset: "$0.2221". */
+export function formatRate(rate: number, currency: FiatCurrency = "USD"): string {
+  const symbol = { USD: "$", EUR: "€", NGN: "₦" }[currency];
+  return `${symbol}${rate.toFixed(4)}`;
+}
+
+/**
+ * True when the rate should be flagged as out of date. Rates carrying an
+ * oracle timestamp go stale after one hour; others after two missed refresh
+ * cycles.
+ */
 export function isRateStale(rate: ExchangeRate | null, now: number = Date.now()): boolean {
-  return rate !== null && now - rate.fetchedAt > RATE_STALE_AFTER_MS;
+  if (rate === null) return false;
+  if (rate.oracleUpdatedAt !== undefined) {
+    return now - rate.oracleUpdatedAt > FX_ORACLE_STALE_AFTER_MS;
+  }
+  return now - rate.fetchedAt > RATE_STALE_AFTER_MS;
 }
 
 /**
@@ -192,15 +253,47 @@ export function isRateStale(rate: ExchangeRate | null, now: number = Date.now())
  * is an estimate, which rate and source were used, when it was fetched, and
  * that settlement still happens in XLM.
  */
-export function describeExchangeRate(rate: ExchangeRate, now: number = Date.now()): string {
-  const time = new Date(rate.fetchedAt).toLocaleTimeString(undefined, {
+export function describeExchangeRate(
+  rate: ExchangeRate,
+  now: number = Date.now(),
+  currency: FiatCurrency = "USD",
+): string {
+  const time = new Date(rate.oracleUpdatedAt ?? rate.fetchedAt).toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
   });
   const stale = isRateStale(rate, now) ? " This rate may be out of date." : "";
+  const value = rateFor(rate, currency) ?? rate.rate;
+  const source =
+    rate.oracleUpdatedAt !== undefined
+      ? "FX oracle"
+      : "Stellar DEX XLM/USDC mid-price via Horizon";
   return (
-    `USD values are estimates converted at 1 XLM ≈ ${formatRate(rate.rate)} ` +
-    `(Stellar DEX XLM/USDC mid-price via Horizon, updated ${time}). ` +
+    `${CURRENCY_LABELS[currency]} values are estimates converted at 1 XLM ≈ ${formatRate(value, currency)} ` +
+    `(${source}, updated ${time}). ` +
     `All transactions settle in XLM.${stale}`
   );
+}
+
+export interface FxRates {
+  rates: Partial<Record<FiatCurrency, number>>;
+  /** Epoch ms the oracle last updated. */
+  updatedAt: number;
+}
+
+/**
+ * Normalise the FX oracle response ({ rates: { USD, EUR, NGN }, updated_at })
+ * into XLM-denominated rates. Throws when no usable rate is present so the
+ * caller keeps its last good rates.
+ */
+export function parseFxRates(body: unknown): FxRates {
+  const raw = body as { rates?: Record<string, unknown>; updated_at?: string | number } | null;
+  const rates: Partial<Record<FiatCurrency, number>> = {};
+  for (const code of FIAT_CURRENCIES) {
+    const value = Number(raw?.rates?.[code]);
+    if (isValidRate(value)) rates[code] = value;
+  }
+  if (rates.USD === undefined) throw new Error("FX oracle returned no USDC rate");
+  const updatedAt = new Date(raw?.updated_at ?? NaN).getTime();
+  return { rates, updatedAt: Number.isFinite(updatedAt) ? updatedAt : Date.now() };
 }

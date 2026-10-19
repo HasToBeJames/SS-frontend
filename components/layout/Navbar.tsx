@@ -28,11 +28,29 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden md:flex items-center gap-4">
-          <Link href="/marketplace" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link
+            href="/marketplace"
+            data-tour="marketplace"
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
             Marketplace
           </Link>
           {isConnected && (
             <>
+              <Link
+                href="/investor/portfolio"
+                data-tour="portfolio"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Portfolio
+              </Link>
+              <Link
+                href="/marketplace/resale"
+                data-tour="secondary-market"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Secondary market
+              </Link>
               <Link
                 href="/activity"
                 className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"

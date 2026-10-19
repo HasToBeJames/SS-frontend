@@ -14,6 +14,7 @@ import { availableFractions } from "@/lib/portfolio";
 import { FractionTransferModal } from "@/components/dashboard/FractionTransferModal";
 import { SettlementCountdown } from "@/components/marketplace/SettlementCountdown";
 import { Download, ExternalLink } from "lucide-react";
+import { PortfolioRiskIndicator } from "@/components/invoices/InvoiceRiskAlert";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -108,7 +109,12 @@ function HoldingsTab() {
                 className="hover:bg-muted/30"
                 data-testid={`holding-row-${pos.invoice_id}`}
               >
-                <td className="p-3 font-medium">{pos.invoice_title}</td>
+                <td className="p-3 font-medium">
+                  <span className="inline-flex items-center gap-2">
+                    {pos.invoice_title}
+                    <PortfolioRiskIndicator invoiceId={pos.invoice_id} />
+                  </span>
+                </td>
                 <td className="p-3">
                   {pos.quantity ?? "—"}
                   {/*

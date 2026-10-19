@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Money } from "@/components/currency";
 
 interface FundingProgressBarProps {
     /** Amount raised so far. The API may omit it for a brand new invoice. */
@@ -116,26 +117,26 @@ export function FundingProgressBar({ raised, target, investorCount, minThreshold
                     <div>
                         <dt className="text-muted-foreground">Raised</dt>
                         <dd className="font-semibold" data-testid="funding-label-raised">
-                            {formatAmount(raisedAmount)} XLM
+                            <Money xlm={raisedAmount} xlmText={`${formatAmount(raisedAmount)} XLM`} />
                         </dd>
                     </div>
                     <div className="text-center">
                         <dt className="text-muted-foreground">Min threshold</dt>
                         <dd className="font-semibold" data-testid="funding-label-min">
-                            {formatAmount(min)} XLM
+                            <Money xlm={min} xlmText={`${formatAmount(min)} XLM`} />
                         </dd>
                     </div>
                     <div className="text-right">
                         <dt className="text-muted-foreground">Max cap</dt>
                         <dd className="font-semibold" data-testid="funding-label-max">
-                            {formatAmount(target)} XLM
+                            <Money xlm={target} xlmText={`${formatAmount(target)} XLM`} />
                         </dd>
                     </div>
                 </dl>
             )}
             <div className="flex items-center justify-between gap-2">
                 <p className="text-sm text-muted-foreground">
-                    {formatAmount(raisedAmount)} XLM of {formatAmount(target)} XLM
+                    <Money xlm={raisedAmount} xlmText={`${formatAmount(raisedAmount)} XLM`} /> of <Money xlm={target} xlmText={`${formatAmount(target)} XLM`} />
                 </p>
                 <div className="flex items-center gap-2">
                     {isFullyFunded && (

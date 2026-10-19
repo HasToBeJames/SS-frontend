@@ -22,7 +22,9 @@ import { useCallback, useContext, useEffect, useState } from "react";
 import { fetchXlmUsdRate as fetchBackendXlmUsdRate } from "@/lib/api";
 import { CurrencyContext, formatXlmDefault, type CurrencyContextValue } from "@/context/CurrencyContext";
 import {
-  formatUsd,
+  formatFiat,
+  isFiatCurrency,
+  rateFor,
   readStoredCurrency,
   readStoredRate,
   writeStoredCurrency,
@@ -86,16 +88,18 @@ function useStandaloneCurrency(enabled: boolean): CurrencyContextValue {
     return () => clearInterval(id);
   }, [enabled, refreshRate]);
 
-  const rate = exchangeRate?.rate ?? null;
-  const isConverted = currency === "USD" && rate !== null;
+  const rate = isFiatCurrency(currency) ? rateFor(exchangeRate, currency) : (exchangeRate?.rate ?? null);
+  const isConverted = isFiatCurrency(currency) && rate !== null;
   const convert = useCallback(
     (xlmAmount: number) => (isConverted ? xlmAmount * rate! : xlmAmount),
     [isConverted, rate],
   );
   const format = useCallback(
     (xlmAmount: number, xlmText?: string) =>
-      isConverted ? formatUsd(xlmAmount * rate!) : (xlmText ?? formatXlmDefault(xlmAmount)),
-    [isConverted, rate],
+      isConverted && isFiatCurrency(currency)
+        ? formatFiat(xlmAmount * rate!, currency)
+        : (xlmText ?? formatXlmDefault(xlmAmount)),
+    [isConverted, currency, rate],
   );
 
   return {

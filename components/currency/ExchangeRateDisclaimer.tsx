@@ -12,13 +12,13 @@
  */
 
 import { useCurrency } from "@/hooks/useCurrency";
-import { describeExchangeRate } from "@/lib/currency";
+import { CURRENCY_LABELS, describeExchangeRate, isFiatCurrency } from "@/lib/currency";
 import { cn } from "@/lib/utils";
 
 export function ExchangeRateDisclaimer({ className }: { className?: string }) {
   const { currency, isConverted, exchangeRate, rateLoading, isStale } = useCurrency();
 
-  if (currency !== "USD") return null;
+  if (!isFiatCurrency(currency)) return null;
 
   if (!isConverted || !exchangeRate) {
     return (
@@ -28,8 +28,8 @@ export function ExchangeRateDisclaimer({ className }: { className?: string }) {
         className={cn("text-xs text-muted-foreground", className)}
       >
         {rateLoading
-          ? "Loading the XLM/USD exchange rate… values are shown in XLM until it arrives."
-          : "The XLM/USD exchange rate is unavailable right now, so values are shown in XLM."}
+          ? `Loading the XLM/${CURRENCY_LABELS[currency]} exchange rate… values are shown in XLM until it arrives.`
+          : `The XLM/${CURRENCY_LABELS[currency]} exchange rate is unavailable right now, so values are shown in XLM.`}
       </p>
     );
   }
@@ -44,7 +44,7 @@ export function ExchangeRateDisclaimer({ className }: { className?: string }) {
         className,
       )}
     >
-      * {describeExchangeRate(exchangeRate)}
+      * {describeExchangeRate(exchangeRate, Date.now(), currency)}
     </p>
   );
 }

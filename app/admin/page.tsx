@@ -20,6 +20,9 @@ export default function AdminPage() {
         <Link href="/admin/fee-config" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
           Fee configuration →
         </Link>
+        <Link href="/admin/contracts" className="ml-4 text-sm text-muted-foreground hover:text-foreground hover:underline">
+          Contract registry →
+        </Link>
       </div>
       <div className="mb-6 flex gap-4 border-b">
         <button
