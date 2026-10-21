@@ -4567,11 +4567,17 @@ export interface AlertPreferences {
   maturity_approaching: boolean;
 }
 
+/** Full alert payload: the per-event toggles plus the maturity reminder days (#542). */
+export interface AlertPreferencesPayload extends AlertPreferences {
+  /** Days before maturity that trigger a reminder, e.g. `[30, 7]`. */
+  maturity_reminder_days: number[];
+}
+
 /** Resolves `null` for a wallet that has never saved preferences (404). */
 export async function fetchAlertPreferences(
   wallet: string,
   token?: string,
-): Promise<Partial<AlertPreferences> | null> {
+): Promise<Partial<AlertPreferencesPayload> | null> {
   const res = await fetch(`${API_BASE}/investors/${encodeURIComponent(wallet)}/alert-preferences`, {
     headers: authHeaders(token),
   });
@@ -4589,7 +4595,7 @@ export interface SetAlertPreferencesResult {
 /** Submits the `set_alert_preferences` contract call with every toggle state. */
 export async function setAlertPreferences(
   wallet: string,
-  preferences: AlertPreferences,
+  preferences: AlertPreferencesPayload,
   token?: string,
 ): Promise<SetAlertPreferencesResult> {
   const res = await fetch(`${API_BASE}/investors/${encodeURIComponent(wallet)}/alert-preferences`, {

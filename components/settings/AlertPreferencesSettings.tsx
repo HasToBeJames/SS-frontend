@@ -7,18 +7,33 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { MaturityReminderSettings } from "@/components/settings/MaturityReminderSettings";
 import { useAlertPreferences } from "@/hooks/useAlertPreferences";
-import { ALERT_EVENTS, DEFAULT_ALERT_PREFERENCES } from "@/lib/alertPreferences";
+import {
+  ALERT_EVENTS,
+  DEFAULT_ALERT_PREFERENCES,
+  type MaturityReminderInterval,
+} from "@/lib/alertPreferences";
 import type { AlertPreferences } from "@/lib/api";
 
-/** Per-event alert toggles with a single save that submits `set_alert_preferences` (#531). */
+/**
+ * Per-event alert toggles and maturity reminder intervals (#542) with a single
+ * save that submits `set_alert_preferences` (#531).
+ */
 export function AlertPreferencesSettings() {
-  const { preferences, isLoading, isError, isConnected, save } = useAlertPreferences();
+  const { preferences, maturityReminderDays, isLoading, isError, isConnected, save } =
+    useAlertPreferences();
   const [draft, setDraft] = useState<AlertPreferences>(DEFAULT_ALERT_PREFERENCES);
+  const [draftReminderDays, setDraftReminderDays] =
+    useState<MaturityReminderInterval[]>(maturityReminderDays);
 
   useEffect(() => {
     setDraft(preferences);
   }, [preferences]);
+
+  useEffect(() => {
+    setDraftReminderDays(maturityReminderDays);
+  }, [maturityReminderDays]);
 
   if (!isConnected) {
     return (
@@ -53,7 +68,7 @@ export function AlertPreferencesSettings() {
             className="space-y-6"
             onSubmit={(event) => {
               event.preventDefault();
-              save.mutate(draft);
+              save.mutate({ ...draft, maturity_reminder_days: draftReminderDays });
             }}
           >
             <div className="divide-y">
@@ -76,6 +91,7 @@ export function AlertPreferencesSettings() {
                 </div>
               ))}
             </div>
+            <MaturityReminderSettings days={draftReminderDays} onChange={setDraftReminderDays} />
             <Button type="submit" disabled={save.isPending} data-testid="alert-preferences-save">
               {save.isPending ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
