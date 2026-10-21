@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -15,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PoolSubscriptionPanel } from "@/components/pools/PoolSubscriptionPanel";
 import { useInvestPoolMutation, useInvoicePool } from "@/hooks/useInvoicePools";
 import { useWallet } from "@/context/WalletContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -42,56 +44,73 @@ function PoolInvestPanel({ pool }: { pool: InvoicePool }) {
         <h2 className="text-lg font-semibold">Invest in this pool</h2>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1">
-            <Label htmlFor="pool-invest-amount">Amount (XLM)</Label>
-            <Input
-              id="pool-invest-amount"
-              type="number"
-              min="0"
-              step="any"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              data-testid="pool-amount-input"
-            />
-          </div>
+        <Tabs defaultValue="invest">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="invest" data-testid="pool-invest-tab">
+              Invest once
+            </TabsTrigger>
+            <TabsTrigger value="subscribe" data-testid="pool-subscribe-tab">
+              Subscribe
+            </TabsTrigger>
+          </TabsList>
 
-          {valid && (
-            <div data-testid="pool-allocation-preview">
-              <p className="mb-2 text-sm font-medium">Allocation preview</p>
-              <ul className="space-y-1 text-sm">
-                {allocations.map((allocation) => (
-                  <li
-                    key={allocation.invoice_id}
-                    className="flex justify-between"
-                    data-testid={`pool-allocation-${allocation.invoice_id}`}
-                  >
-                    <span className="text-muted-foreground">{allocation.name}</span>
-                    <span className="tabular-nums">
-                      {allocation.amount.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}{" "}
-                      XLM
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <TabsContent value="invest" className="pt-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1">
+                <Label htmlFor="pool-invest-amount">Amount (XLM)</Label>
+                <Input
+                  id="pool-invest-amount"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  data-testid="pool-amount-input"
+                />
+              </div>
 
-          {!isConnected && (
-            <p className="text-sm text-muted-foreground">Connect a wallet to invest.</p>
-          )}
+              {valid && (
+                <div data-testid="pool-allocation-preview">
+                  <p className="mb-2 text-sm font-medium">Allocation preview</p>
+                  <ul className="space-y-1 text-sm">
+                    {allocations.map((allocation) => (
+                      <li
+                        key={allocation.invoice_id}
+                        className="flex justify-between"
+                        data-testid={`pool-allocation-${allocation.invoice_id}`}
+                      >
+                        <span className="text-muted-foreground">{allocation.name}</span>
+                        <span className="tabular-nums">
+                          {allocation.amount.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}{" "}
+                          XLM
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-          <Button
-            type="submit"
-            disabled={!valid || !isConnected || mutation.isPending}
-            data-testid="pool-invest-submit"
-          >
-            {mutation.isPending ? "Investing..." : "Invest in pool"}
-          </Button>
-        </form>
+              {!isConnected && (
+                <p className="text-sm text-muted-foreground">Connect a wallet to invest.</p>
+              )}
+
+              <Button
+                type="submit"
+                disabled={!valid || !isConnected || mutation.isPending}
+                data-testid="pool-invest-submit"
+              >
+                {mutation.isPending ? "Investing..." : "Invest in pool"}
+              </Button>
+            </form>
+          </TabsContent>
+
+          <TabsContent value="subscribe" className="pt-4">
+            <PoolSubscriptionPanel poolId={pool.id} />
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );

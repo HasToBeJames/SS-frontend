@@ -2867,6 +2867,71 @@ export async function investInPool(
   return res.json();
 }
 
+/* ─── Pool subscriptions (#544) ────────────────────────────────────────────
+ * A subscription invests a fixed amount into a pool on a schedule. Creating
+ * one submits `create_subscription`; cancelling submits `cancel_subscription`.
+ */
+
+export type PoolSubscriptionInterval = "daily" | "weekly" | "monthly";
+
+export interface PoolSubscription {
+  id: string;
+  pool_id: string;
+  /** Amount invested on each execution, in XLM. */
+  amount: number;
+  interval: PoolSubscriptionInterval;
+  next_execution_at: string;
+  /** Sum of every execution so far, in XLM. */
+  total_invested: number;
+  is_active: boolean;
+}
+
+/** Resolves `null` when the wallet has no subscription to this pool (404). */
+export async function fetchPoolSubscription(
+  poolId: string,
+  wallet: string,
+): Promise<PoolSubscription | null> {
+  const params = new URLSearchParams({ wallet });
+  const res = await fetch(
+    `${API_BASE}/pools/${encodeURIComponent(poolId)}/subscription?${params.toString()}`,
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("Failed to fetch pool subscription");
+  return res.json();
+}
+
+export interface CreatePoolSubscriptionInput {
+  amount: number;
+  interval: PoolSubscriptionInterval;
+}
+
+export async function createPoolSubscription(
+  poolId: string,
+  input: CreatePoolSubscriptionInput,
+  wallet: string,
+): Promise<{ success: boolean; tx_hash?: string }> {
+  const res = await fetch(`${API_BASE}/pools/${encodeURIComponent(poolId)}/subscription`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ method: "create_subscription", wallet, ...input }),
+  });
+  if (!res.ok) throw new Error("Failed to start pool subscription");
+  return res.json();
+}
+
+export async function cancelPoolSubscription(
+  poolId: string,
+  wallet: string,
+): Promise<{ success: boolean; tx_hash?: string }> {
+  const res = await fetch(`${API_BASE}/pools/${encodeURIComponent(poolId)}/subscription`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ method: "cancel_subscription", wallet }),
+  });
+  if (!res.ok) throw new Error("Failed to cancel pool subscription");
+  return res.json();
+}
+
 // ---------------------------------------------------------------------------
 // Investor loyalty (#509)
 // ---------------------------------------------------------------------------
