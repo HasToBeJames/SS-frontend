@@ -2704,6 +2704,92 @@ export async function fetchAutoInvestExecutedEvents(
   return res.json();
 }
 
+/* ─── Invoice auto-rollover (#545) ─────────────────────────────────────────
+ * At maturity, a funded position is reinvested into an invoice that matches
+ * the rollover criteria. Saving submits `set_rollover_config`, the kill switch
+ * submits `disable_rollover`, and the activity list is the `RolloverExecuted`
+ * event log indexed by the backend.
+ */
+
+export interface RolloverConfigPayload {
+  sector: string;
+  min_yield: number;
+  max_invoice_age: number;
+  max_amount: number;
+  is_enabled: boolean;
+  updated_at?: string;
+}
+
+export interface RolloverConfigResponse {
+  address: string;
+  /** `null` before the investor has ever configured a rollover. */
+  config: RolloverConfigPayload | null;
+}
+
+export async function fetchRolloverConfig(
+  address: string,
+  token?: string,
+): Promise<RolloverConfigResponse> {
+  const params = new URLSearchParams({ address });
+  const res = await fetch(`${API_BASE}/rollover/config?${params.toString()}`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error("Failed to fetch rollover config");
+  return res.json();
+}
+
+export async function setRolloverConfig(
+  address: string,
+  config: RolloverConfigPayload,
+  token?: string,
+): Promise<{ success: boolean; tx_hash?: string }> {
+  const res = await fetch(`${API_BASE}/rollover/config`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...authHeaders(token) },
+    body: JSON.stringify({ address, method: "set_rollover_config", ...config }),
+  });
+  if (!res.ok) throw new Error("Failed to save rollover config");
+  return res.json();
+}
+
+export async function disableRollover(
+  address: string,
+  token?: string,
+): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_BASE}/rollover/disable`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(token) },
+    body: JSON.stringify({ address, method: "disable_rollover" }),
+  });
+  if (!res.ok) throw new Error("Failed to disable rollover");
+  return res.json();
+}
+
+/** One `RolloverExecuted` event: a matured position reinvested automatically. */
+export interface RolloverExecutedEvent {
+  id: string;
+  invoice_id: string;
+  invoice_title: string;
+  amount: number;
+  yield_percentage: number;
+  sector?: string;
+  executed_at: string;
+  tx_hash?: string;
+}
+
+export async function fetchRolloverExecutedEvents(
+  address: string,
+  limit = 5,
+  token?: string,
+): Promise<RolloverExecutedEvent[]> {
+  const params = new URLSearchParams({ address, limit: String(limit) });
+  const res = await fetch(`${API_BASE}/rollover/events?${params.toString()}`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error("Failed to fetch rollover activity");
+  return res.json();
+}
+
 // ---------------------------------------------------------------------------
 // Issuer announcements (#502)
 // ---------------------------------------------------------------------------
