@@ -2968,6 +2968,8 @@ export interface AccreditationStatus {
   tier: AccreditationTier;
   /** Minimum face value (XLM) that requires accreditation. */
   high_value_threshold: number;
+  /** When the current accreditation lapses; absent before the backend reports it (#543). */
+  expires_at?: string | null;
 }
 
 export type AccreditationTier = "unaccredited" | "accredited" | "qualified";
@@ -4033,6 +4035,7 @@ function normalizeAccreditationStatus(raw: any, wallet: string): AccreditationSt
     high_value_threshold: Number(
       raw.high_value_threshold ?? raw.highValueThreshold ?? raw.threshold ?? 100_000
     ),
+    expires_at: raw.expires_at ?? raw.expiresAt ?? null,
   };
 }
 
