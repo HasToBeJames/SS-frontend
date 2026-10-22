@@ -10,6 +10,7 @@ import { usePortfolioSummary, useRecentActivity, useUpcomingMaturities } from "@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Money, ExchangeRateDisclaimer } from "@/components/currency";
+import { AccreditationRenewalBanner } from "@/components/investor/AccreditationRenewalBanner";
 
 export function InvestorDashboard() {
   const { data: portfolio, isLoading: portfolioLoading } = usePortfolioSummary();
@@ -28,6 +29,7 @@ export function InvestorDashboard() {
 
   return (
     <div className="space-y-6">
+      <AccreditationRenewalBanner />
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground mt-1">Welcome back! Here&apos;s an overview of your portfolio.</p>

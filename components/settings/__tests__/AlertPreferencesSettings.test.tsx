@@ -9,6 +9,9 @@ import { useWallet } from "@/context/WalletContext";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/context/WalletContext", () => ({ useWallet: vi.fn() }));
+vi.mock("@/hooks/useActivity", () => ({
+  useUpcomingMaturities: () => ({ data: [], isLoading: false, isError: false }),
+}));
 vi.mock("@/lib/api", () => ({
   fetchAlertPreferences: vi.fn(),
   setAlertPreferences: vi.fn(),
@@ -74,6 +77,7 @@ describe("AlertPreferencesSettings (#531)", () => {
       watchlist_change: true,
       auto_invest: true,
       maturity_approaching: true,
+      maturity_reminder_days: [30, 14, 7, 1],
     });
   });
 
@@ -92,5 +96,20 @@ describe("AlertPreferencesSettings (#531)", () => {
     renderPanel();
     expect(screen.getByTestId("alert-preferences-connect")).toBeInTheDocument();
     expect(fetchAlertPreferences).not.toHaveBeenCalled();
+  });
+
+  it("saves the maturity reminder intervals the user toggled (#542)", async () => {
+    vi.mocked(fetchAlertPreferences).mockResolvedValue({ maturity_reminder_days: [30, 7] });
+    vi.mocked(setAlertPreferences).mockResolvedValue({ success: true });
+    renderPanel();
+
+    await userEvent.click(await screen.findByTestId("maturity-reminder-toggle-14"));
+    await userEvent.click(screen.getByTestId("maturity-reminder-toggle-7"));
+    await userEvent.click(screen.getByTestId("alert-preferences-save"));
+
+    await waitFor(() => expect(setAlertPreferences).toHaveBeenCalled());
+    expect(vi.mocked(setAlertPreferences).mock.calls[0][1]).toMatchObject({
+      maturity_reminder_days: [30, 14],
+    });
   });
 });

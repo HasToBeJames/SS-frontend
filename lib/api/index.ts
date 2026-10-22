@@ -2704,6 +2704,92 @@ export async function fetchAutoInvestExecutedEvents(
   return res.json();
 }
 
+/* ─── Invoice auto-rollover (#545) ─────────────────────────────────────────
+ * At maturity, a funded position is reinvested into an invoice that matches
+ * the rollover criteria. Saving submits `set_rollover_config`, the kill switch
+ * submits `disable_rollover`, and the activity list is the `RolloverExecuted`
+ * event log indexed by the backend.
+ */
+
+export interface RolloverConfigPayload {
+  sector: string;
+  min_yield: number;
+  max_invoice_age: number;
+  max_amount: number;
+  is_enabled: boolean;
+  updated_at?: string;
+}
+
+export interface RolloverConfigResponse {
+  address: string;
+  /** `null` before the investor has ever configured a rollover. */
+  config: RolloverConfigPayload | null;
+}
+
+export async function fetchRolloverConfig(
+  address: string,
+  token?: string,
+): Promise<RolloverConfigResponse> {
+  const params = new URLSearchParams({ address });
+  const res = await fetch(`${API_BASE}/rollover/config?${params.toString()}`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error("Failed to fetch rollover config");
+  return res.json();
+}
+
+export async function setRolloverConfig(
+  address: string,
+  config: RolloverConfigPayload,
+  token?: string,
+): Promise<{ success: boolean; tx_hash?: string }> {
+  const res = await fetch(`${API_BASE}/rollover/config`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...authHeaders(token) },
+    body: JSON.stringify({ address, method: "set_rollover_config", ...config }),
+  });
+  if (!res.ok) throw new Error("Failed to save rollover config");
+  return res.json();
+}
+
+export async function disableRollover(
+  address: string,
+  token?: string,
+): Promise<{ success: boolean }> {
+  const res = await fetch(`${API_BASE}/rollover/disable`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders(token) },
+    body: JSON.stringify({ address, method: "disable_rollover" }),
+  });
+  if (!res.ok) throw new Error("Failed to disable rollover");
+  return res.json();
+}
+
+/** One `RolloverExecuted` event: a matured position reinvested automatically. */
+export interface RolloverExecutedEvent {
+  id: string;
+  invoice_id: string;
+  invoice_title: string;
+  amount: number;
+  yield_percentage: number;
+  sector?: string;
+  executed_at: string;
+  tx_hash?: string;
+}
+
+export async function fetchRolloverExecutedEvents(
+  address: string,
+  limit = 5,
+  token?: string,
+): Promise<RolloverExecutedEvent[]> {
+  const params = new URLSearchParams({ address, limit: String(limit) });
+  const res = await fetch(`${API_BASE}/rollover/events?${params.toString()}`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error("Failed to fetch rollover activity");
+  return res.json();
+}
+
 // ---------------------------------------------------------------------------
 // Issuer announcements (#502)
 // ---------------------------------------------------------------------------
@@ -2867,6 +2953,71 @@ export async function investInPool(
   return res.json();
 }
 
+/* ─── Pool subscriptions (#544) ────────────────────────────────────────────
+ * A subscription invests a fixed amount into a pool on a schedule. Creating
+ * one submits `create_subscription`; cancelling submits `cancel_subscription`.
+ */
+
+export type PoolSubscriptionInterval = "daily" | "weekly" | "monthly";
+
+export interface PoolSubscription {
+  id: string;
+  pool_id: string;
+  /** Amount invested on each execution, in XLM. */
+  amount: number;
+  interval: PoolSubscriptionInterval;
+  next_execution_at: string;
+  /** Sum of every execution so far, in XLM. */
+  total_invested: number;
+  is_active: boolean;
+}
+
+/** Resolves `null` when the wallet has no subscription to this pool (404). */
+export async function fetchPoolSubscription(
+  poolId: string,
+  wallet: string,
+): Promise<PoolSubscription | null> {
+  const params = new URLSearchParams({ wallet });
+  const res = await fetch(
+    `${API_BASE}/pools/${encodeURIComponent(poolId)}/subscription?${params.toString()}`,
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("Failed to fetch pool subscription");
+  return res.json();
+}
+
+export interface CreatePoolSubscriptionInput {
+  amount: number;
+  interval: PoolSubscriptionInterval;
+}
+
+export async function createPoolSubscription(
+  poolId: string,
+  input: CreatePoolSubscriptionInput,
+  wallet: string,
+): Promise<{ success: boolean; tx_hash?: string }> {
+  const res = await fetch(`${API_BASE}/pools/${encodeURIComponent(poolId)}/subscription`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ method: "create_subscription", wallet, ...input }),
+  });
+  if (!res.ok) throw new Error("Failed to start pool subscription");
+  return res.json();
+}
+
+export async function cancelPoolSubscription(
+  poolId: string,
+  wallet: string,
+): Promise<{ success: boolean; tx_hash?: string }> {
+  const res = await fetch(`${API_BASE}/pools/${encodeURIComponent(poolId)}/subscription`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ method: "cancel_subscription", wallet }),
+  });
+  if (!res.ok) throw new Error("Failed to cancel pool subscription");
+  return res.json();
+}
+
 // ---------------------------------------------------------------------------
 // Investor loyalty (#509)
 // ---------------------------------------------------------------------------
@@ -2968,6 +3119,8 @@ export interface AccreditationStatus {
   tier: AccreditationTier;
   /** Minimum face value (XLM) that requires accreditation. */
   high_value_threshold: number;
+  /** When the current accreditation lapses; absent before the backend reports it (#543). */
+  expires_at?: string | null;
 }
 
 export type AccreditationTier = "unaccredited" | "accredited" | "qualified";
@@ -4033,6 +4186,7 @@ function normalizeAccreditationStatus(raw: any, wallet: string): AccreditationSt
     high_value_threshold: Number(
       raw.high_value_threshold ?? raw.highValueThreshold ?? raw.threshold ?? 100_000
     ),
+    expires_at: raw.expires_at ?? raw.expiresAt ?? null,
   };
 }
 
@@ -4567,11 +4721,17 @@ export interface AlertPreferences {
   maturity_approaching: boolean;
 }
 
+/** Full alert payload: the per-event toggles plus the maturity reminder days (#542). */
+export interface AlertPreferencesPayload extends AlertPreferences {
+  /** Days before maturity that trigger a reminder, e.g. `[30, 7]`. */
+  maturity_reminder_days: number[];
+}
+
 /** Resolves `null` for a wallet that has never saved preferences (404). */
 export async function fetchAlertPreferences(
   wallet: string,
   token?: string,
-): Promise<Partial<AlertPreferences> | null> {
+): Promise<Partial<AlertPreferencesPayload> | null> {
   const res = await fetch(`${API_BASE}/investors/${encodeURIComponent(wallet)}/alert-preferences`, {
     headers: authHeaders(token),
   });
@@ -4589,7 +4749,7 @@ export interface SetAlertPreferencesResult {
 /** Submits the `set_alert_preferences` contract call with every toggle state. */
 export async function setAlertPreferences(
   wallet: string,
-  preferences: AlertPreferences,
+  preferences: AlertPreferencesPayload,
   token?: string,
 ): Promise<SetAlertPreferencesResult> {
   const res = await fetch(`${API_BASE}/investors/${encodeURIComponent(wallet)}/alert-preferences`, {

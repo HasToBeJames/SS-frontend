@@ -3,10 +3,12 @@ import { CurrencySettings } from "@/components/settings/CurrencySettings";
 import { RestartTourSettings } from "@/components/settings/RestartTourSettings";
 import { NetworkSelector } from "@/components/network/NetworkSelector";
 import { AutoInvestSettingsPanel } from "@/components/investor/AutoInvestSettingsPanel";
+import { RolloverSettingsPanel } from "@/components/investor/RolloverSettingsPanel";
 
 // #437 — general settings page; hosts the display-currency toggle.
 // #443 — Stellar network selector.
 // #476 — auto-invest rule configuration panel.
+// #545 — invoice auto-rollover configuration panel.
 export default function SettingsPage() {
   return (
     <main className="container mx-auto max-w-2xl space-y-6 px-4 py-8">
@@ -16,6 +18,10 @@ export default function SettingsPage() {
       <section id="auto-invest" className="space-y-3">
         <h2 className="text-lg font-semibold">Auto-invest</h2>
         <AutoInvestSettingsPanel />
+      </section>
+      <section id="rollover" className="space-y-3">
+        <h2 className="text-lg font-semibold">Auto-rollover</h2>
+        <RolloverSettingsPanel />
       </section>
       <section id="alerts" className="space-y-3">
         <h2 className="text-lg font-semibold">Alerts</h2>

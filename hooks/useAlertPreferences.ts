@@ -6,10 +6,13 @@ import { toast } from "sonner";
 import {
   fetchAlertPreferences,
   setAlertPreferences,
-  type AlertPreferences,
+  type AlertPreferencesPayload,
 } from "@/lib/api";
 import { useWallet } from "@/context/WalletContext";
-import { normalizeAlertPreferences } from "@/lib/alertPreferences";
+import {
+  normalizeAlertPreferences,
+  normalizeMaturityReminderDays,
+} from "@/lib/alertPreferences";
 
 export function alertPreferencesQueryKey(address: string | null) {
   return ["alert-preferences", address] as const;
@@ -17,7 +20,8 @@ export function alertPreferencesQueryKey(address: string | null) {
 
 /**
  * Alert preferences for the connected wallet (#531). Wallets with no saved
- * preferences read as all-enabled; saving submits `set_alert_preferences`.
+ * preferences read as all-enabled; saving submits `set_alert_preferences`
+ * with the maturity reminder days alongside the toggles (#542).
  */
 export function useAlertPreferences() {
   const { address, isConnected } = useWallet();
@@ -36,8 +40,13 @@ export function useAlertPreferences() {
     [query.data],
   );
 
+  const maturityReminderDays = useMemo(
+    () => normalizeMaturityReminderDays(query.data?.maturity_reminder_days),
+    [query.data],
+  );
+
   const save = useMutation({
-    mutationFn: (next: AlertPreferences) => {
+    mutationFn: (next: AlertPreferencesPayload) => {
       if (!address) throw new Error("Connect a wallet to save alert preferences");
       return setAlertPreferences(address, next);
     },
@@ -52,6 +61,7 @@ export function useAlertPreferences() {
 
   return {
     preferences,
+    maturityReminderDays,
     isLoading: query.isLoading,
     isError: query.isError,
     isConnected,
