@@ -26,6 +26,7 @@ export { InvestorDemandMetrics } from "./InvestorDemandMetrics";
 export { FeaturedInvoicesCarousel } from "./FeaturedInvoicesCarousel";
 export { YieldCalculator } from "./YieldCalculator";
 export { MyListings } from "./MyListings";
+export { TransferBlocked } from "./TransferBlocked";
 export { StateChangeBadge } from "./StateChangeBadge";
 export { WatchlistButton } from "./WatchlistButton";
 export { EmptyWatchlist } from "./EmptyWatchlist";

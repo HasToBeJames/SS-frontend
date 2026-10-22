@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useStellarWallet } from "@/hooks/useStellarWallet";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { usePageLoadPerformanceLog } from "@/hooks/usePageLoadPerformanceLog";
+import { TimelockPendingBanner } from "@/components/governance";
 import { InvestorPortfolioPage } from "@/components/dashboard/InvestorPortfolioPage";
 
 export default function PortfolioPage() {
@@ -25,6 +26,9 @@ export default function PortfolioPage() {
 
   return (
     <main className="container mx-auto px-4 py-8">
+      <div className="mb-6">
+        <TimelockPendingBanner />
+      </div>
       <h1 className="text-2xl font-bold mb-6">My Portfolio</h1>
       <InvestorPortfolioPage />
     </main>

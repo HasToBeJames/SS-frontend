@@ -5,6 +5,7 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { fetchInvoices, resolveInvoiceCategory, type Invoice, type InvoiceCategory } from "@/lib/api";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { TimelockPendingBanner } from "@/components/governance";
 import { FundingProgressBar } from "@/components/invoices";
 import {
   ActiveTaxonomyChips,
@@ -740,6 +741,7 @@ function MarketplacePageContent() {
   return (
     <ComparisonProvider>
       <main className="container mx-auto px-4 py-8 pb-24 space-y-8">
+        <TimelockPendingBanner />
         <div className="space-y-3">
           <h1 className="text-2xl font-bold">Invoice Marketplace</h1>
           <MarketplaceViewTabs active="invoices" />
