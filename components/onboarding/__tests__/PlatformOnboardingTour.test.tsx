@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import Link from "next/link";
 import { PlatformOnboardingTour, ONBOARDING_TOUR_STEPS } from "@/components/onboarding/PlatformOnboardingTour";
 import { RestartTourSettings } from "@/components/settings/RestartTourSettings";
 import { ONBOARDING_TOUR_STORAGE_KEY } from "@/hooks/useOnboardingTour";
@@ -13,7 +14,7 @@ async function mount() {
   vi.useFakeTimers();
   const view = render(
     <>
-      <a data-tour="marketplace" href="/marketplace">Marketplace</a>
+      <Link data-tour="marketplace" href="/marketplace">Marketplace</Link>
       <PlatformOnboardingTour />
       <RestartTourSettings />
     </>,

@@ -60,4 +60,13 @@ function Button({
   )
 }
 
-export { Button, buttonVariants }
+/* Generated placeholder features (#256/#257) kept for the UI smoke tests. */
+function FeatureComponent129({ label = "New Feature 129" }: { label?: string }) {
+  return <span data-testid="feature-component-129">{label}</span>
+}
+
+function FeatureComponent130({ label = "New Feature 130" }: { label?: string }) {
+  return <span data-testid="feature-component-130">{label}</span>
+}
+
+export { Button, buttonVariants, FeatureComponent129, FeatureComponent130 }

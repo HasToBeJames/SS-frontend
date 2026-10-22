@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   BadgeCheck,
   Check,
@@ -33,6 +34,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ReferralTierPanel } from "@/components/referrals/ReferralTierPanel";
+import { REFERRAL_TIER_QUERY_KEY } from "@/hooks/useReferralTier";
 
 type ReferralStatus = "joined" | "invested" | "pending";
 
@@ -103,6 +106,7 @@ export function ReferralProgramme() {
   const [referralCode] = useState("STELLAR-7K2Q9A");
   const [copied, setCopied] = useState(false);
   const [referrals] = useState<ReferredUser[]>(MOCK_REFERRALS);
+  const queryClient = useQueryClient();
 
   const referralLink = useMemo(() => {
     const base =
@@ -114,6 +118,15 @@ export function ReferralProgramme() {
 
   const totalRewards = referrals.reduce((sum, r) => sum + r.reward, 0);
   const successfulCount = referrals.filter((r) => r.status === "invested").length;
+
+  // A newly earned reward changes the referred volume the tier is measured
+  // against, so refresh the tier panel whenever the reward total moves.
+  const previousRewards = useRef(totalRewards);
+  useEffect(() => {
+    if (previousRewards.current === totalRewards) return;
+    previousRewards.current = totalRewards;
+    void queryClient.invalidateQueries({ queryKey: REFERRAL_TIER_QUERY_KEY });
+  }, [queryClient, totalRewards]);
 
   const copyLink = async () => {
     try {
@@ -208,6 +221,9 @@ export function ReferralProgramme() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Tier progress */}
+      <ReferralTierPanel />
 
       {/* Link generator */}
       <Card>

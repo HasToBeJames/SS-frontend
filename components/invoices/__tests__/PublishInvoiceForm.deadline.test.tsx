@@ -18,7 +18,7 @@ vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ jwt: null }) }));
 
 describe("PublishInvoiceForm - Deadline Validation", () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ["Date"] });
     vi.clearAllMocks();
   });
 
@@ -88,7 +88,7 @@ describe("PublishInvoiceForm - Deadline Validation", () => {
     });
 
     // Should NOT advance to step 2
-    expect(screen.queryByText(/Document Upload/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Invoice Title")).toBeInTheDocument();
   });
 
   it("shows error for past deadline", async () => {
@@ -185,7 +185,7 @@ describe("PublishInvoiceForm - Deadline Validation", () => {
     // Error should appear and form should stay on step 1
     await waitFor(() => {
       expect(screen.getByText("Deadline must be at least 24 hours from now")).toBeInTheDocument();
-      expect(screen.queryByText(/Document Upload/i)).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Invoice Title")).toBeInTheDocument();
     });
   });
 
@@ -323,6 +323,6 @@ describe("PublishInvoiceForm - Deadline Validation", () => {
 
     // ✓ ACCEPTANCE CRITERIA 4: Submit button disabled while deadline is invalid
     // The form stays on step 1 and does not advance (Next button click had no effect)
-    expect(screen.queryByText(/Document Upload/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Invoice Title")).toBeInTheDocument();
   });
 });

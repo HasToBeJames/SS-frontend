@@ -10,6 +10,7 @@ import {
   useSubmitInvoiceRatingMutation,
 } from "@/hooks/useInvoiceRating";
 import { cn } from "@/lib/utils";
+import { RatingDistribution } from "@/components/invoices/RatingPrompt";
 
 interface InvoiceRatingWidgetProps {
   invoiceId: string;
@@ -31,7 +32,7 @@ export function InvoiceRatingWidget({
   walletAddress,
   token,
 }: InvoiceRatingWidgetProps) {
-  const { data, isLoading } = useInvoiceRating(invoiceId);
+  const { data, isLoading } = useInvoiceRating(invoiceId, walletAddress);
   const submitMutation = useSubmitInvoiceRatingMutation(invoiceId);
   const [selected, setSelected] = useState<number | null>(null);
 
@@ -41,8 +42,6 @@ export function InvoiceRatingWidget({
       setSelected(data.user_rating);
     }
   }, [data?.user_rating]);
-
-  if (!isEligible) return null;
 
   if (isLoading || !data) {
     return (
@@ -63,10 +62,14 @@ export function InvoiceRatingWidget({
     });
   };
 
+  const hasRated = data.user_rating !== null && data.user_rating !== undefined;
+
   return (
     <Card data-testid="rating-widget">
       <CardHeader>
-        <h2 className="text-lg font-semibold">Rate this invoice</h2>
+        <h2 className="text-lg font-semibold">
+          {isEligible && !hasRated ? "Rate this invoice" : "Investor rating"}
+        </h2>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-2">
@@ -79,6 +82,18 @@ export function InvoiceRatingWidget({
           </span>
         </div>
 
+        <RatingDistribution summary={data} />
+
+        {hasRated ? (
+          <p
+            className="flex items-center gap-1 text-sm text-muted-foreground"
+            data-testid="rating-already-rated"
+          >
+            You rated this invoice {data.user_rating} star{data.user_rating !== 1 ? "s" : ""}
+            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" aria-hidden="true" />
+          </p>
+        ) : isEligible ? (
+        <>
         <div className="flex items-center gap-1" role="radiogroup" aria-label="Star rating">
           {[1, 2, 3, 4, 5].map((star) => (
             <button
@@ -117,6 +132,8 @@ export function InvoiceRatingWidget({
         >
           {submitMutation.isPending ? "Submitting..." : "Submit rating"}
         </Button>
+        </>
+        ) : null}
       </CardContent>
     </Card>
   );

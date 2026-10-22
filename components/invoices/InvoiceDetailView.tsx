@@ -10,6 +10,7 @@
  */
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { FileQuestion, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -31,6 +32,7 @@ import { ReturnsCalculator } from "@/components/invoices/ReturnsCalculator";
 import { InvestmentModal } from "@/components/invoices/InvestmentModal";
 import { InvoiceRatingWidget } from "@/components/invoices/InvoiceRatingWidget";
 import { ReturnsBreakdown } from "@/components/invoices/ReturnsBreakdown";
+import { SettlementTimeline } from "@/components/invoices/SettlementTimeline";
 import { ShareInvoiceButton } from "@/components/invoices/ShareInvoiceButton";
 import { WatchlistButton } from "@/components/invoices/WatchlistButton";
 import { useIsKycApproved } from "@/hooks/useKycStatus";
@@ -44,12 +46,12 @@ import { InvestorDemandMetrics } from "@/components/marketplace/InvestorDemandMe
 import { InvoiceClassificationBadges } from "@/components/marketplace/InvoiceClassificationBadges";
 import { InvoiceTagPills } from "@/components/marketplace/InvoiceTagPills";
 import { SettlementCountdown } from "@/components/marketplace/SettlementCountdown";
-import { InvoiceFraudReport } from "@/components/invoices/InvoiceFraudReport";
 import { AnnouncementFeed } from "@/components/invoices/AnnouncementFeed";
 import { SyndicatePanel } from "@/components/invoices/SyndicatePanel";
 import { InvoiceFraudReport, InvoiceUnderReviewBanner } from "@/components/invoices/InvoiceFraudReport";
 import { InvoiceRiskAlert } from "@/components/invoices/InvoiceRiskAlert";
 import { InvoiceBenchmarkCard } from "@/components/invoices/InvoiceBenchmarkCard";
+import { InvoiceNavPanel } from "@/components/invoices/InvoiceNavPanel";
 import { truncateAddress } from "@/lib/stellar";
 import { DEFAULT_MIN_INVESTMENT } from "@/lib/invoiceDefaults";
 import { Money } from "@/components/currency";
@@ -111,6 +113,10 @@ export function InvoiceNotFound({ invoiceId }: { invoiceId: string }) {
 /**
  * The invest CTA. Hidden outright for wallets that have not passed KYC —
  * showing a button that always fails is worse than not offering it.
+ *
+ * The NAV panel sits inside this card for every branch (#546): fair value
+ * against the market price is public information, so it is shown whether or
+ * not this particular wallet is allowed to invest.
  */
 function InvestCallToAction({
   invoiceId,
@@ -134,53 +140,37 @@ function InvestCallToAction({
     enabled: isConnected,
   });
 
+  let body: ReactNode;
+
   if (!isConnected) {
-    return (
-      <Card data-testid="invest-cta">
-        <CardContent className="pt-6">
-          <p className="text-sm text-muted-foreground">
-            Connect a wallet to invest in this invoice.
-          </p>
-        </CardContent>
-      </Card>
+    body = (
+      <p className="text-sm text-muted-foreground">
+        Connect a wallet to invest in this invoice.
+      </p>
     );
-  }
-
-  if (isLoading) {
-    return (
-      <Card data-testid="invest-cta">
-        <CardContent className="pt-6">
-          <Skeleton className="h-9 w-32" data-testid="invest-cta-loading" />
-        </CardContent>
-      </Card>
+  } else if (isLoading) {
+    body = <Skeleton className="h-9 w-32" data-testid="invest-cta-loading" />;
+  } else if (!isApproved) {
+    body = (
+      <div>
+        <p
+          className="flex items-center gap-2 text-sm text-muted-foreground"
+          data-testid="invest-hidden-not-approved"
+        >
+          <ShieldAlert className="h-4 w-4" />
+          Investing is available once your KYC is approved.
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground" data-testid="kyc-status">
+          Current KYC status: {status ?? "unknown"}
+        </p>
+        <Button asChild variant="outline" size="sm" className="mt-3">
+          <Link href="/kyc/status">View KYC status</Link>
+        </Button>
+      </div>
     );
-  }
-
-  if (!isApproved) {
-    return (
-      <Card data-testid="invest-cta">
-        <CardContent className="pt-6">
-          <p
-            className="flex items-center gap-2 text-sm text-muted-foreground"
-            data-testid="invest-hidden-not-approved"
-          >
-            <ShieldAlert className="h-4 w-4" />
-            Investing is available once your KYC is approved.
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground" data-testid="kyc-status">
-            Current KYC status: {status ?? "unknown"}
-          </p>
-          <Button asChild variant="outline" size="sm" className="mt-3">
-            <Link href="/kyc/status">View KYC status</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card data-testid="invest-cta">
-      <CardContent className="pt-6">
+  } else {
+    body = (
+      <>
         <InvestmentModal
           invoiceId={invoiceId}
           minInvestment={minInvestment}
@@ -193,6 +183,15 @@ function InvestCallToAction({
           maturityDate={maturityDate}
           fractionPrice={fractionPrice}
         />
+      </>
+    );
+  }
+
+  return (
+    <Card data-testid="invest-cta">
+      <CardContent className="pt-6 space-y-4">
+        <InvoiceNavPanel invoiceId={invoiceId} fractionPrice={fractionPrice} />
+        {body}
       </CardContent>
     </Card>
   );
@@ -317,6 +316,16 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
         minInvestment={minInvestment}
       />
 
+      {/* Repayment ledger (#478): interim instalments and the final settlement,
+          shown once the invoice has been funded. */}
+      {(invoice.status === "funded" || invoice.status === "settled") && (
+        <SettlementTimeline
+          invoiceId={invoice.id}
+          totalDue={invoice.amount}
+          isSettled={invoice.status === "settled"}
+        />
+      )}
+
       <InvoiceBenchmarkCard invoiceId={invoice.id} />
 
       {invoice.status === "funded" && (
@@ -428,7 +437,10 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
         />
       ) : (
         <Card data-testid="invest-cta">
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 space-y-4">
+            {/* The NAV comparison still applies once the primary market has
+                closed: funded invoices trade on the secondary market (#546). */}
+            <InvoiceNavPanel invoiceId={invoice.id} fractionPrice={invoice.fraction_price} />
             <p className="text-sm text-muted-foreground" data-testid="invest-unavailable">
               {invoice.status === "settled"
                 ? "This invoice has been settled and is no longer open for investment."

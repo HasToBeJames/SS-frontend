@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { MAX_COMPARE_INVOICES, useComparison } from "@/components/marketplace/InvoiceComparisonContext";
+import { ComparisonProvider, MAX_COMPARE_INVOICES, useComparison } from "@/components/marketplace/InvoiceComparisonContext";
 import { InvoiceComparisonTable } from "@/components/marketplace/InvoiceComparisonTable";
 import { Button } from "@/components/ui/button";
 
-export default function ComparePage() {
+function ComparePageContent() {
   const { compareInvoices, clearComparison } = useComparison();
   usePageTitle("Compare invoices");
 
@@ -50,5 +50,14 @@ export default function ComparePage() {
         <InvoiceComparisonTable invoices={compareInvoices} />
       )}
     </main>
+  );
+}
+
+/** The compare view reads the shared selection, so it needs the provider. */
+export default function ComparePage() {
+  return (
+    <ComparisonProvider>
+      <ComparePageContent />
+    </ComparisonProvider>
   );
 }

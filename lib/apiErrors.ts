@@ -43,25 +43,33 @@ function readMessage(value: unknown): string | null {
 export function extractApiErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
 
-  let envelope: ApiErrorEnvelope | null = null;
   if (isRecord(error)) {
-    // axios-style errors carry the payload on `response.data`
-    const data = isRecord(error.response) ? error.response.data : null;
-    envelope = (data ?? error) as ApiErrorEnvelope;
-  }
+    // axios-style errors carry the payload on `response.data`, while the HTTP
+    // status sits on `response` itself.
+    const response = isRecord(error.response) ? error.response : null;
+    const data = response ? response.data : null;
+    const envelope = (isRecord(data) ? data : error) as ApiErrorEnvelope;
 
-  if (envelope) {
     const direct =
       readMessage(envelope.message) ??
       readMessage(envelope.error) ??
       readMessage(envelope.detail);
     if (direct) return direct;
 
-    if (typeof envelope.status === "number") {
-      return `Request failed with status ${envelope.status}`;
+    const status =
+      typeof envelope.status === "number"
+        ? envelope.status
+        : response && typeof response.status === "number"
+          ? response.status
+          : null;
+    if (status !== null) {
+      return `Request failed with status ${status}`;
     }
     if (typeof envelope.statusText === "string" && envelope.statusText) {
       return envelope.statusText;
+    }
+    if (response && typeof response.statusText === "string" && response.statusText) {
+      return response.statusText;
     }
   }
 

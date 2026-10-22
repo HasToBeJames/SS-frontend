@@ -8,8 +8,10 @@ import { InvestCurrencySelector } from "@/components/invoices/InvestCurrencySele
 import { FeeTierDisplay } from "@/components/invoices/FeeTierDisplay";
 import { PriceImpactWarning } from "@/components/invoices/PriceImpactWarning";
 import { TopUpCta } from "@/components/wallet/TopUpCta";
+import { OnboardingBonusChip } from "@/components/invoices/OnboardingBonusChip";
 import { AccreditationGateSteps } from "@/components/invoices/AccreditationGateModal";
 import { useInvestMutation } from "@/hooks/useInvestments";
+import { useInvestorLoyalty } from "@/hooks/useInvestorLoyalty";
 import { useFxRate } from "@/hooks/useFxRate";
 import { useUsdcBalance } from "@/hooks/useUsdcBalance";
 import { useWallet } from "@/context/WalletContext";
@@ -51,6 +53,7 @@ export function InvestmentModal({
   const fxRate = useFxRate(currency);
   const { address, network } = useWallet();
   const { balance, refresh } = useUsdcBalance(address, network);
+  const loyalty = useInvestorLoyalty(address);
 
   // A null balance means the balance is still unknown, which is not the same as
   // being underfunded, so it must not block the investment.
@@ -107,6 +110,7 @@ export function InvestmentModal({
               <p className="text-sm text-muted-foreground">
                 Enter the amount you&apos;d like to invest
               </p>
+              <OnboardingBonusChip />
             </div>
 
             <div className="flex items-center justify-between text-sm" data-testid="investment-modal-min-investment">
@@ -162,7 +166,7 @@ export function InvestmentModal({
               />
             )}
 
-            <FeeTierDisplay amount={validAmount} />
+            <FeeTierDisplay amount={validAmount} loyalty={loyalty.data} />
 
             {/* #450 — link to the full public fee schedule so the tier shown
                 above can be read in context (what it applies to, and the other

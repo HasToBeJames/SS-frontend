@@ -235,7 +235,7 @@ export function SellerInvoiceTabs({
                 : "text-muted-foreground hover:bg-muted"
             }`}
           >
-            {TAB_LABELS[tab]}
+            {TAB_LABELS[tab]}{" "}
             <span className="ml-1.5 text-xs opacity-80">({counts[tab]})</span>
           </button>
         ))}

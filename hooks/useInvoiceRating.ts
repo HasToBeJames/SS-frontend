@@ -12,10 +12,10 @@ import {
 export const invoiceRatingQueryKey = (invoiceId: string) =>
   ["invoice", invoiceId, "rating"] as const;
 
-export function useInvoiceRating(invoiceId: string) {
+export function useInvoiceRating(invoiceId: string, walletAddress?: string | null) {
   return useQuery({
     queryKey: invoiceRatingQueryKey(invoiceId),
-    queryFn: () => fetchInvoiceRating(invoiceId),
+    queryFn: () => fetchInvoiceRating(invoiceId, walletAddress),
   });
 }
 

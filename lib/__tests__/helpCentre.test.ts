@@ -31,6 +31,7 @@ describe("helpCentre", () => {
       const results = filterHelpArticles("wallet");
 
       expect(results.map((article) => article.id)).toEqual([
+        "invest-invoice",
         "platform-wallet",
         "technical-connect",
         "technical-transaction",

@@ -2,6 +2,16 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { PositionCard, formatSharePercent } from "../PositionCard";
 import type { InvestmentPosition } from "@/lib/portfolio";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+function renderWithClient(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+  );
+}
 
 // PositionCard renders PositionTransferModal for every "active" position
 // (issue #119); this file only exercises PositionCard's own rendering, so
@@ -45,7 +55,7 @@ describe("formatSharePercent", () => {
 
 describe("PositionCard", () => {
   it("renders committed XLM and share percentage correctly", () => {
-    render(<PositionCard position={makePosition({ committed_amount: 3000, share_percent: 30 })} />);
+    renderWithClient(<PositionCard position={makePosition({ committed_amount: 3000, share_percent: 30 })} />);
 
     expect(screen.getByTestId("position-committed")).toHaveTextContent(
       "3,000.00 XLM committed"
@@ -54,19 +64,19 @@ describe("PositionCard", () => {
   });
 
   it("renders 100% share without crashing", () => {
-    render(<PositionCard position={makePosition({ share_percent: 100 })} />);
+    renderWithClient(<PositionCard position={makePosition({ share_percent: 100 })} />);
 
     expect(screen.getByTestId("position-share")).toHaveTextContent("100%");
   });
 
   it("renders a dash placeholder when share percentage is null", () => {
-    render(<PositionCard position={makePosition({ share_percent: null })} />);
+    renderWithClient(<PositionCard position={makePosition({ share_percent: null })} />);
 
     expect(screen.getByTestId("position-share")).toHaveTextContent("—");
   });
 
   it("formats XLM amount with two decimal places", () => {
-    render(<PositionCard position={makePosition({ committed_amount: 1234.5 })} />);
+    renderWithClient(<PositionCard position={makePosition({ committed_amount: 1234.5 })} />);
 
     expect(screen.getByTestId("position-committed")).toHaveTextContent(
       "1,234.50 XLM committed"
@@ -74,13 +84,13 @@ describe("PositionCard", () => {
   });
 
   it("rounds share percentage to two decimal places in the UI", () => {
-    render(<PositionCard position={makePosition({ share_percent: 12.345 })} />);
+    renderWithClient(<PositionCard position={makePosition({ share_percent: 12.345 })} />);
 
     expect(screen.getByTestId("position-share")).toHaveTextContent("12.35%");
   });
 
   it("renders Top Up button for active positions with remaining capacity", () => {
-    render(
+    renderWithClient(
       <PositionCard
         position={makePosition({
           status: "active",
@@ -93,7 +103,7 @@ describe("PositionCard", () => {
   });
 
   it("does not render Top Up button for settled positions", () => {
-    render(
+    renderWithClient(
       <PositionCard
         position={makePosition({
           status: "settled",
@@ -106,7 +116,7 @@ describe("PositionCard", () => {
   });
 
   it("does not render Top Up button when remaining capacity is zero", () => {
-    render(
+    renderWithClient(
       <PositionCard
         position={makePosition({
           status: "active",

@@ -20,9 +20,15 @@ const CATEGORY_LABELS: Record<HelpArticleCategory, string> = {
   technical: "Technical",
 };
 
-function HelpArticleAccordionItem({ article }: { article: HelpArticle }) {
+function HelpArticleAccordionItem({
+  article,
+  testIdPrefix = "help-article",
+}: {
+  article: HelpArticle;
+  testIdPrefix?: string;
+}) {
   const [open, setOpen] = useState(false);
-  const bodyId = `help-article-body-${article.id}`;
+  const bodyId = `${testIdPrefix}-body-${article.id}`;
 
   return (
     <div>
@@ -30,7 +36,7 @@ function HelpArticleAccordionItem({ article }: { article: HelpArticle }) {
         type="button"
         aria-expanded={open}
         aria-controls={bodyId}
-        data-testid={`help-article-toggle-${article.id}`}
+        data-testid={`${testIdPrefix}-toggle-${article.id}`}
         onClick={() => setOpen((prev) => !prev)}
         className="flex w-full items-center justify-between py-3 text-left text-sm font-medium hover:text-primary"
       >
@@ -44,7 +50,7 @@ function HelpArticleAccordionItem({ article }: { article: HelpArticle }) {
         <div
           id={bodyId}
           role="region"
-          data-testid={`help-article-body-${article.id}`}
+          data-testid={`${testIdPrefix}-body-${article.id}`}
           className="pb-3 text-sm text-muted-foreground"
         >
           {article.body}
@@ -117,14 +123,20 @@ export function HelpCentre() {
           <h2 className="text-lg font-semibold mb-2">Most viewed</h2>
           <div className="divide-y rounded-md border px-4" data-testid="help-most-viewed">
             {mostViewed.map((article) => (
-              <HelpArticleAccordionItem key={article.id} article={article} />
+              <HelpArticleAccordionItem
+                key={article.id}
+                article={article}
+                testIdPrefix="help-most-viewed-article"
+              />
             ))}
           </div>
         </section>
       )}
 
       {HELP_CENTRE_CATEGORIES.map((category) => {
-        const articles = filtered.filter((article) => article.category === category);
+        const articles = filtered.filter(
+          (article) => article.category === category,
+        );
         if (articles.length === 0) return null;
 
         return (

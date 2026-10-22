@@ -53,7 +53,7 @@ function buildSteps(
   const currentIdx = getStageIndex(status as TimelineStage);
   const isTerminal = status === "rejected" || status === "expired";
 
-  return STAGE_ORDER.map((stage, idx) => {
+  const steps: TimelineStep[] = STAGE_ORDER.map((stage, idx) => {
     const stageEvent = events?.find((e) => e.stage === stage);
     const isCompleted = !isTerminal && currentIdx > idx;
     const isCurrent = !isTerminal && currentIdx === idx;
@@ -65,19 +65,19 @@ function buildSteps(
       actor: stageEvent?.actor,
       isRejected: false,
     };
-  }).concat(
-    isTerminal
-      ? [
-          {
-            stage: status as TimelineStage,
-            label: STAGE_LABELS[status as TimelineStage] ?? status,
-            timestamp: events?.find((e) => e.stage === status)?.timestamp,
-            isRejected: true,
-            rejectionReason: events?.find((e) => e.stage === status)?.reason,
-          },
-        ]
-      : []
-  );
+  });
+
+  if (isTerminal) {
+    steps.push({
+      stage: status as TimelineStage,
+      label: STAGE_LABELS[status as TimelineStage] ?? status,
+      timestamp: events?.find((e) => e.stage === status)?.timestamp,
+      isRejected: true,
+      rejectionReason: events?.find((e) => e.stage === status)?.reason,
+    });
+  }
+
+  return steps;
 }
 
 interface InvoiceTimelineProps {

@@ -60,7 +60,7 @@ export function ClosedUnfundedBanner({
             <p className={`text-sm font-medium ${config.text}`}>{config.message}</p>
             <p className={`text-xs ${config.text}/75`}>
               Amount:{" "}
-              <Money amount={refundAmount} className="font-semibold" />
+              <Money xlm={refundAmount} className="font-semibold" />
               {refundDate && ` — Refunded on ${new Date(refundDate).toLocaleDateString()}`}
             </p>
           </div>

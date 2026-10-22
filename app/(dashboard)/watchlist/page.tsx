@@ -1,174 +1,143 @@
 "use client";
 
-import { format } from "date-fns";
-import { Trash2, ExternalLink, Loader2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Bell, Loader2, RefreshCw, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  ComparisonProvider,
+  EmptyWatchlist,
+  InvoiceCard,
+} from "@/components/marketplace";
 import { useWatchlist } from "@/hooks/useWatchlist";
-import { fetchInvoices, type Invoice } from "@/lib/api";
-import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
 import { useStellarWallet } from "@/hooks/useStellarWallet";
-import { cn } from "@/lib/utils";
-import { Money } from "@/components/currency";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
+/**
+ * Investor watchlist (#474).
+ *
+ * Lists the wallets's watched invoices as full `InvoiceCard`s, each carrying a
+ * state-change badge and a bell to unwatch. The list itself comes from the
+ * on-chain registry via the connected wallet.
+ */
 export default function WatchlistPage() {
-  const { address, isConnected } = useStellarWallet();
-  const { items, isLoading: watchlistLoading, toggle, isBookmarked, count } = useWatchlist();
-
-  const { data: invoicesData, isLoading: invoicesLoading } = useQuery({
-    queryKey: ["watchlist-invoices", items.join(",")],
-    queryFn: async () => {
-      if (items.length === 0) return [];
-      const results = await Promise.all(
-        items.map(async (id) => {
-          try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "/api"}/invoices/${id}`);
-            if (res.ok) return res.json();
-            return null;
-          } catch {
-            return null;
-          }
-        })
-      );
-      return results.filter((inv): inv is Invoice => inv !== null);
-    },
-    enabled: items.length > 0,
-  });
-
-  if (!isConnected) {
-    return (
-      <main className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">
-          <h1 className="text-3xl font-bold mb-2">Watchlist</h1>
-          <p className="text-muted-foreground mb-6">
-            Connect your wallet to view and manage your bookmarked invoices
-          </p>
-        </div>
-      </main>
-    );
-  }
-
-  const isLoading = watchlistLoading || invoicesLoading;
-  const invoices = invoicesData ?? [];
-
-  if (isLoading) {
-    return (
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold">Watchlist</h1>
-          <p className="text-muted-foreground mt-1">Your bookmarked invoices</p>
-        </div>
-        <div className="space-y-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <WatchlistSkeleton key={i} />
-          ))}
-        </div>
-      </main>
-    );
-  }
+  usePageTitle("Watchlist");
+  const router = useRouter();
+  const { isConnected } = useStellarWallet();
+  const { invoices, count, isLoading, isError, refetch, isPending } =
+    useWatchlist();
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Watchlist</h1>
-        <p className="text-muted-foreground mt-1">Your bookmarked invoices ({count})</p>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-3xl font-bold">
+            <Bell className="h-7 w-7 text-primary" aria-hidden="true" />
+            Watchlist
+          </h1>
+          <p className="mt-1 text-muted-foreground">
+            {isConnected
+              ? `Invoices you are monitoring (${count})`
+              : "Connect your wallet to view the invoices you are monitoring"}
+          </p>
+        </div>
+        {isConnected && count > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isLoading || isPending()}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+              aria-hidden="true"
+            />
+            Refresh
+          </Button>
+        )}
       </div>
 
-      {invoices.length === 0 ? (
-        <Card className="py-12 text-center">
-          <CardContent>
-            <p className="text-muted-foreground mb-4">No bookmarked invoices yet</p>
-            <Button asChild>
-              <Link href="/marketplace">Browse Marketplace</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {invoices.map((invoice) => (
-            <WatchlistItem
-              key={invoice.id}
-              invoice={invoice}
-              onRemove={() => toggle(invoice.id)}
-            />
+      {!isConnected ? (
+        <div
+          className="flex flex-col items-center justify-center rounded-lg border border-dashed bg-card px-6 py-16 text-center"
+          data-testid="watchlist-connect-wallet"
+        >
+          <Wallet className="mb-4 h-10 w-10 text-muted-foreground" aria-hidden="true" />
+          <h2 className="text-lg font-semibold">Connect your wallet</h2>
+          <p className="mt-2 max-w-md text-sm text-muted-foreground">
+            Your watchlist lives on-chain against your wallet address. Connect
+            to sync the invoices you are monitoring.
+          </p>
+          <Button asChild className="mt-6">
+            <Link href="/connect-wallet">Connect Wallet</Link>
+          </Button>
+        </div>
+      ) : isLoading ? (
+        <div
+          className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+          aria-busy="true"
+          data-testid="watchlist-loading"
+        >
+          {Array.from({ length: 3 }).map((_, index) => (
+            <WatchlistCardSkeleton key={index} />
           ))}
         </div>
+      ) : isError ? (
+        <div
+          className="flex flex-col items-center justify-center rounded-lg border border-dashed bg-card px-6 py-16 text-center"
+          data-testid="watchlist-error"
+        >
+          <h2 className="text-lg font-semibold">Couldn&apos;t load your watchlist</h2>
+          <p className="mt-2 max-w-md text-sm text-muted-foreground">
+            The registry did not respond. Check your connection and try again.
+          </p>
+          <Button variant="outline" className="mt-6" onClick={() => refetch()}>
+            <Loader2 className="h-4 w-4" aria-hidden="true" />
+            Try again
+          </Button>
+        </div>
+      ) : invoices.length === 0 ? (
+        <EmptyWatchlist />
+      ) : (
+        <ComparisonProvider>
+          <div
+            className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+            data-testid="watchlist-grid"
+          >
+            {invoices.map(({ invoice, stateChange }) => (
+              <InvoiceCard
+                key={invoice.id}
+                invoice={invoice}
+                stateChange={stateChange}
+                onInvest={() => router.push(`/marketplace/${invoice.id}`)}
+              />
+            ))}
+          </div>
+        </ComparisonProvider>
       )}
     </main>
   );
 }
 
-function WatchlistItem({
-  invoice,
-  onRemove,
-}: {
-  invoice: Invoice;
-  onRemove: () => void;
-}) {
+function WatchlistCardSkeleton() {
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <Link
-              href={`/marketplace/${invoice.id}`}
-              className="font-semibold hover:underline"
-            >
-              {invoice.title}
-            </Link>
-            <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-muted-foreground">
-              <span><Money xlm={invoice.amount} xlmText={`${invoice.amount.toLocaleString()} XLM`} /></span>
-              <span>{invoice.investor_count} investors</span>
-              <span>Due: {format(new Date(invoice.due_date), "MMM d, yyyy")}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-            >
-              <Link href={`/marketplace/${invoice.id}`}>
-                <ExternalLink className="h-4 w-4 mr-1" />
-                View
-              </Link>
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onRemove}
-              className="text-destructive hover:bg-destructive/10"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function WatchlistSkeleton() {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <Skeleton className="h-5 w-48 mb-2" />
-            <div className="flex gap-4">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-32" />
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Skeleton className="h-9 w-20" />
-            <Skeleton className="h-9 w-9" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="space-y-3 rounded-xl border bg-card p-4" data-testid="watchlist-card-skeleton">
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="h-6 w-16" />
+      </div>
+      <Skeleton className="h-4 w-24" />
+      <Skeleton className="h-2 w-full" />
+      <div className="flex justify-between">
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-4 w-20" />
+      </div>
+      <div className="flex gap-2">
+        <Skeleton className="h-9 flex-1" />
+        <Skeleton className="h-9 w-9" />
+        <Skeleton className="h-9 w-9" />
+      </div>
+    </div>
   );
 }

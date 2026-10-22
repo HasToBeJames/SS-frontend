@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
-export default function PublishSuccessPage() {
+function PublishSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const invoiceId = searchParams.get("invoiceId");
@@ -52,5 +52,17 @@ export default function PublishSuccessPage() {
         </CardContent>
       </Card>
     </main>
+  );
+}
+
+/**
+ * `useSearchParams` requires a Suspense boundary so this route can still be
+ * statically prerendered. The content is client-only anyway.
+ */
+export default function PublishSuccessPage() {
+  return (
+    <Suspense fallback={null}>
+      <PublishSuccessContent />
+    </Suspense>
   );
 }

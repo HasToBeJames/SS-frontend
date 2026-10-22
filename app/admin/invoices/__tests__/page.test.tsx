@@ -154,6 +154,7 @@ describe("Admin Invoices Page", () => {
     });
 
     fireEvent.click(screen.getByTestId("approve-btn-inv-101"));
+    fireEvent.click(screen.getByTestId("confirm-action-btn"));
 
     await waitFor(() => {
       expect(api.approveAdminInvoice).toHaveBeenCalledWith("inv-101", adminToken);
@@ -194,6 +195,7 @@ describe("Admin Invoices Page", () => {
 
     expect(confirmBtn).not.toBeDisabled();
     fireEvent.click(confirmBtn);
+    fireEvent.click(screen.getByTestId("confirm-action-btn"));
 
     await waitFor(() => {
       expect(api.rejectAdminInvoice).toHaveBeenCalledWith("inv-101", "Invalid documentation", adminToken);

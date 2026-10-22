@@ -12,6 +12,12 @@ vi.mock("@/components/marketplace/InvestorDemandMetrics", () => ({
     InvestorDemandMetrics: () => null,
 }));
 
+// The featured carousel repeats invoice titles above the grid; these tests
+// assert on the grid, so rendering it twice makes text queries ambiguous.
+vi.mock("@/components/marketplace/FeaturedInvoicesCarousel", () => ({
+    FeaturedInvoicesCarousel: () => null,
+}));
+
 vi.mock("@tanstack/react-query", async () => {
   const actual = await vi.importActual("@tanstack/react-query");
   return {

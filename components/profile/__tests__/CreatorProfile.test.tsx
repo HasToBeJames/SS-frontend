@@ -41,36 +41,55 @@ function makeInvoice(overrides: any = {}) {
 
 const WALLET = "GWALLET1111111111111111111111111111111111111111111111";
 
+const PAGE_KEYS = [
+  "wallet",
+  "display_name",
+  "joined_at",
+  "kyc_verified",
+  "stats",
+  "invoices",
+  "has_more",
+  "next_cursor",
+] as const;
+
 function setupMock(overrides: Record<string, any> = {}) {
+  const page: Record<string, any> = {
+    wallet: WALLET,
+    display_name: "Stellar Studio",
+    joined_at: "2026-01-15T00:00:00.000Z",
+    kyc_verified: true,
+    stats: {
+      total_invoices: 12,
+      total_funded: 45000,
+      settlement_success_rate: 98,
+    },
+    invoices: [
+      makeInvoice({ id: "inv-1", title: "Alpha Invoice", status: "settled" }),
+      makeInvoice({ id: "inv-2", title: "Beta Invoice", status: "open" }),
+    ],
+    has_more: false,
+    next_cursor: null,
+  };
+
+  // Page-level overrides (kyc_verified, invoices, stats, …) belong inside the
+  // page; hook-level ones (hasNextPage, fetchNextPage, …) go on the result.
+  const hookOverrides: Record<string, any> = {};
+  for (const [key, value] of Object.entries(overrides)) {
+    if ((PAGE_KEYS as readonly string[]).includes(key)) {
+      page[key] = value;
+    } else {
+      hookOverrides[key] = value;
+    }
+  }
+
   mockUseInfiniteQuery.mockReturnValue({
-    data: {
-      pages: [
-        {
-          wallet: WALLET,
-          display_name: "Stellar Studio",
-          joined_at: "2026-01-15T00:00:00.000Z",
-          kyc_verified: true,
-          stats: {
-            total_invoices: 12,
-            total_funded: 45000,
-            settlement_success_rate: 98,
-          },
-          invoices: [
-            makeInvoice({ id: "inv-1", title: "Alpha Invoice", status: "settled" }),
-            makeInvoice({ id: "inv-2", title: "Beta Invoice", status: "open" }),
-          ],
-          has_more: false,
-          next_cursor: null,
-        },
-      ],
-      pageParams: [undefined],
-    } as any,
+    data: { pages: [page], pageParams: [undefined] } as any,
     isLoading: false,
     isError: false,
     fetchNextPage: vi.fn(),
     hasNextPage: false,
     isFetchingNextPage: false,
-    ...overrides,
+    ...hookOverrides,
   } as any);
 }
 

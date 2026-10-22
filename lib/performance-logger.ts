@@ -1,6 +1,6 @@
 import { logInfo } from "@/lib/logger";
 
-export type PageName = "seller_dashboard" | "investor_portfolio";
+export type PageName = "seller_dashboard" | "investor_portfolio" | "investor_portfolio_page";
 
 export interface PagePerformanceMetrics {
     page_name: PageName;

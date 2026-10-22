@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, useEffect } from "react";
+import { Suspense, useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { fetchInvoices, resolveInvoiceCategory, type Invoice, type InvoiceCategory } from "@/lib/api";
@@ -14,9 +14,11 @@ import {
   FeaturedInvoicesCarousel,
   FilterPanel,
   InvoiceComparisonBar,
+  BenchmarkChip,
   InvoiceTagPills,
   InvestorDemandMetrics,
   MarketplaceFilterBar,
+  NavChip,
   SettlementCountdown,
   SectorChips,
   TaxonomyFilterPanel,
@@ -126,6 +128,9 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
               {invoice.yield_percentage !== undefined ? `${invoice.yield_percentage}%` : "N/A"}
             </span>
             Yield
+            <div className="mt-1">
+              <BenchmarkChip invoice={invoice} />
+            </div>
           </div>
           {/*
             Replaces the plain investor count: it renders the same figure from
@@ -157,7 +162,9 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
             target={invoice.amount}
             investorCount={invoice.investor_count}
           />
-          <div className="mt-3 flex justify-end">
+          <div className="mt-3 flex items-center justify-between gap-2">
+            {/* Fair value against the market price (#546). */}
+            <NavChip invoiceId={invoice.id} fractionPrice={invoice.fraction_price} />
             <CompareToggleButton invoice={invoice} />
           </div>
         </div>
@@ -167,6 +174,14 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
 }
 
 export default function MarketplacePage() {
+  return (
+    <Suspense fallback={null}>
+      <MarketplacePageContent />
+    </Suspense>
+  );
+}
+
+function MarketplacePageContent() {
   usePageTitle("Browse Invoices");
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -946,3 +961,4 @@ export default function MarketplacePage() {
     </ComparisonProvider>
   );
 }
+

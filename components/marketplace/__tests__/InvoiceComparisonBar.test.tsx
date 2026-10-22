@@ -70,7 +70,7 @@ describe("InvoiceComparisonBar", () => {
       </TestWrapper>
     );
 
-    expect(screen.getByText(/1 invoice selected/)).toBeInTheDocument();
+    expect(screen.getByText(/1 of 3 selected/)).toBeInTheDocument();
     expect(screen.getByText("Invoice 1")).toBeInTheDocument();
   });
 
@@ -81,7 +81,7 @@ describe("InvoiceComparisonBar", () => {
       </TestWrapper>
     );
 
-    expect(screen.getByText(/2 invoices selected/)).toBeInTheDocument();
+    expect(screen.getByText(/2 of 3 selected/)).toBeInTheDocument();
   });
 
   it("should remove invoice when close button is clicked", async () => {

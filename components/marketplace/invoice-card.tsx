@@ -11,8 +11,13 @@ import { SettlementCountdown } from "./SettlementCountdown";
 import { InvestorDemandMetrics } from "./InvestorDemandMetrics";
 import { useComparison } from "./InvoiceComparisonContext";
 import { ShareInvoiceButton } from "@/components/invoices/ShareInvoiceButton";
-import { Lock, Scale } from "lucide-react";
+import { StateChangeBadge } from "./StateChangeBadge";
+import { WatchlistButton } from "./WatchlistButton";
+import { BenchmarkChip } from "./BenchmarkChip";
+import { NavChip } from "./NavChip";
+import { Lock } from "lucide-react";
 import type { Invoice } from "@/lib/api";
+import type { WatchlistStateChange } from "@/lib/watchlist";
 import { Money } from "@/components/currency";
 import { useSuitabilityTier } from "@/hooks/useSuitabilityTier";
 import { REQUIRED_TIER, TIER_LABELS, canInvestInGrade } from "@/lib/suitability";
@@ -26,9 +31,18 @@ const statusVariant: Record<string, "default" | "secondary" | "outline" | "destr
 interface InvoiceCardProps {
   invoice: Invoice;
   onInvest?: (invoiceId: string) => void;
+  /** Recent state transition to announce on the card (#474). */
+  stateChange?: WatchlistStateChange | null;
+  /** Hide the watch bell on surfaces where watching is not the point. */
+  showWatchToggle?: boolean;
 }
 
-export function InvoiceCard({ invoice, onInvest }: InvoiceCardProps) {
+export function InvoiceCard({
+  invoice,
+  onInvest,
+  stateChange = null,
+  showWatchToggle = true,
+}: InvoiceCardProps) {
   const published = invoice.status === "open";
   const expired = isExpired(invoice.due_date);
   const { tier } = useSuitabilityTier();
@@ -45,15 +59,21 @@ export function InvoiceCard({ invoice, onInvest }: InvoiceCardProps) {
       : null;
 
   return (
-    <Card className="flex flex-col" data-tour="invoice-card">
+    <Card className="flex flex-col" data-testid={`invoice-card-${invoice.id}`}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="line-clamp-1 text-base">
-            {invoice.title}
-          </CardTitle>
-          <Badge variant={statusVariant[invoice.status]}>
-            {invoice.status}
-          </Badge>
+          <div className="min-w-0 space-y-1">
+            <CardTitle className="line-clamp-1 text-base">
+              {invoice.title}
+            </CardTitle>
+            {stateChange && <StateChangeBadge change={stateChange} />}
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Badge variant={statusVariant[invoice.status]}>
+              {invoice.status}
+            </Badge>
+            {showWatchToggle && <WatchlistButton invoiceId={invoice.id} />}
+          </div>
         </div>
         <InvoiceClassificationBadges invoice={invoice} />
         <InvoiceTagPills invoice={invoice} />
@@ -66,6 +86,20 @@ export function InvoiceCard({ invoice, onInvest }: InvoiceCardProps) {
           </span>
           <CountdownTimer deadline={invoice.due_date} published={published} />
         </div>
+
+        {invoice.yield_percentage !== undefined && (
+          <div className="flex flex-col items-start gap-1" data-testid="invoice-card-yield">
+            <span className="text-sm text-muted-foreground">
+              Yield{" "}
+              <span className="font-medium text-foreground">{invoice.yield_percentage}%</span>
+            </span>
+            <BenchmarkChip invoice={invoice} />
+          </div>
+        )}
+
+        {/* Fair value against the market price (#546). The chip hides itself
+            when the invoice has no NAV, so it is safe to always render. */}
+        <NavChip invoiceId={invoice.id} fractionPrice={invoice.fraction_price} />
 
         <FundingProgressBar
           raised={invoice.raised}

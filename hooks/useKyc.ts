@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { submitBusinessKyc, fetchKycStatus, uploadDocument, type KycSubmission, type KycStatus } from "@/lib/api";
+import { submitBusinessKyc, fetchKycStatus, uploadDocument, type KycSubmission } from "@/lib/api";
 import { toast } from "sonner";
 
 export function useKycStatus() {

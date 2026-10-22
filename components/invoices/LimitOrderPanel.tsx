@@ -112,7 +112,7 @@ function LimitOrderForm({ invoiceId, onPlaced }: OrderFormProps) {
             aria-describedby="max-price-hint"
           />
           <p id="max-price-hint" className="text-xs text-muted-foreground">
-            Order executes when any listing's ask price ≤ this value
+            Order executes when any listing&apos;s ask price ≤ this value
           </p>
         </div>
       </div>

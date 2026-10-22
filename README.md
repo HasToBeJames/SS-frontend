@@ -141,6 +141,7 @@ lib/
 
 - **Sellers**: `(dashboard)/seller` — publish (`PublishInvoiceForm`, `publishInvoice()`), edit, and track invoices via `SellerDashboard`/`fetchSellerDashboard()`.
 - **Investors**: `/marketplace` browse + filter (`FilterPanel`, `filter-bar`), `/marketplace/[id]` detail + invest (`InvestDialog`/`InvestmentModal` → `investInInvoice()`), `(dashboard)/investor` portfolio (`InvestorPortfolio`, `fetchPortfolio()`), payout history (`PayoutHistoryTable`, `fetchInvestorPayouts()`).
+- **Watchlist** (#474): `/watchlist` lists the connected wallet's watched invoices as `InvoiceCard`s, each with a bell toggle (`WatchlistButton`) and a recent state-change badge (`StateChangeBadge`). `useWatchlist` reads the on-chain registry via `fetchWatchlistRegistry()` and layers optimistic add/remove on top, rolling back when the registry call fails. `/investor/watchlist` redirects here.
 - Invoices carry `status`: `"open" | "funded" | "settled" | "rejected" | "draft"`, a `yield_percentage`, and support position transfer between investors (`transferInvoicePosition()`).
 - Documents attach via `uploadDocumentToIpfs()` (`DocumentUpload`/`DocumentPreview`).
 - A leaderboard (`TopInvestorsLeaderboard`, `useLeaderboard`) and a recently-viewed list (`useRecentlyViewed`, backed by `lib/recentlyViewed.ts`) appear on the landing page.

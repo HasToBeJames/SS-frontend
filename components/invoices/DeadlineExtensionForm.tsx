@@ -129,10 +129,10 @@ export function DeadlineExtensionForm({
 
             <Button
               onClick={handleSubmit}
-              disabled={!isValidSelection || state === "submitting"}
+              disabled={!isValidSelection}
               size="sm"
             >
-              {state === "submitting" ? "Submitting..." : "Request Extension"}
+              Request Extension
             </Button>
           </div>
         )}

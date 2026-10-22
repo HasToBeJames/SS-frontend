@@ -28,9 +28,10 @@ export function SubscriptionGate({ keyId, children }: SubscriptionGateProps) {
   );
 
   // Show countdown for active subscriptions
-  const timeRemaining = useCountdown(
-    subscription?.isSubscribed ? subscription.expiryDate : null
-  );
+  const expiryDate = subscription?.isSubscribed
+    ? subscription.expiryDate ?? null
+    : null;
+  const timeRemaining = useCountdown(expiryDate, Boolean(expiryDate));
 
   // Don't gate if no wallet connected
   if (!isConnected) return <>{children}</>;
@@ -67,9 +68,10 @@ export function SubscriptionGate({ keyId, children }: SubscriptionGateProps) {
             <ShieldCheck className="h-3 w-3" />
             Active Subscription
           </Badge>
-          {subscription.expiryDate && timeRemaining && (
+          {expiryDate && (
             <span className="text-xs text-muted-foreground" data-testid="expiry-countdown">
-              Expires in {timeRemaining}
+              Expires in {timeRemaining.days}d {timeRemaining.hours}h{" "}
+              {timeRemaining.minutes}m
             </span>
           )}
         </div>

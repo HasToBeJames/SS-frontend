@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 
 import {
@@ -53,7 +54,14 @@ afterEach(() => {
 });
 
 function renderComponent() {
-  return render(<ReturnsBreakdown invoiceId="inv-1" />);
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <ReturnsBreakdown invoiceId="inv-1" />
+    </QueryClientProvider>,
+  );
 }
 
 describe("ReturnsBreakdown (issue #284)", () => {
@@ -93,27 +101,34 @@ describe("ReturnsBreakdown (issue #284)", () => {
     const createObjectUrl = vi.fn(() => "blob:mock");
     const revokeObjectUrl = vi.fn();
     // jsdom lacks URL.createObjectURL
-    URL.createObjectURL = createObjectURL as any;
-    URL.revokeObjectURL = revokeObjectURL as any;
-    const clickSpy = vi.fn();
-    const appendSpy = vi.spyOn(document.body, "appendChild").mockImplementation(() => null as any);
+    URL.createObjectURL = createObjectUrl as any;
+    URL.revokeObjectURL = revokeObjectUrl as any;
 
     renderComponent();
     await waitFor(() => screen.getByTestId("returns-export-btn"));
 
-    const anchorMock = {
-      href: "",
-      download: "",
-      click: clickSpy,
-    } as unknown as HTMLAnchorElement;
-    vi.spyOn(document, "createElement").mockReturnValueOnce(anchorMock);
+    // Install these only after render: React appends its container to body.
+    let appendedAnchor: HTMLAnchorElement | null = null;
+    const appendSpy = vi
+      .spyOn(document.body, "appendChild")
+      .mockImplementation((node) => {
+        appendedAnchor = node as HTMLAnchorElement;
+        return node;
+      });
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
 
     fireEvent.click(screen.getByTestId("returns-export-btn"));
 
-    expect(createObjectURL).toHaveBeenCalled();
+    expect(createObjectUrl).toHaveBeenCalled();
+    expect(revokeObjectUrl).toHaveBeenCalled();
     expect(clickSpy).toHaveBeenCalled();
-    expect(anchorMock.download).toBe("returns-inv-1.csv");
+    expect((appendedAnchor as HTMLAnchorElement | null)?.download).toBe(
+      "returns-inv-1.csv",
+    );
     appendSpy.mockRestore();
+    clickSpy.mockRestore();
   });
 
   it("computes floor-division shares matching the backend", () => {

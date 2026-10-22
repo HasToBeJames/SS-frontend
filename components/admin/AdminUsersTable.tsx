@@ -664,7 +664,9 @@ export function AdminUsersTable() {
                 onClick={() =>
                   suspendMutation.mutate({
                     wallet: suspendTarget.wallet,
-                    suspended: suspendTarget.suspended,
+                    // `suspendTarget` is the user's current row, so the action
+                    // is the inverse of its current suspended state.
+                    suspended: !suspendTarget.suspended,
                   })
                 }
                 disabled={suspendMutation.isPending}

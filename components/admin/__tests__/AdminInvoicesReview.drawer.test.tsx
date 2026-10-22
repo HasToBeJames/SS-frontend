@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/context/AuthContext", () => ({ useAuth: () => ({ jwt: "tok" }) }));
+vi.mock("@/lib/api");
 vi.mock("@/components/invoices/DocumentPreview", () => ({
   DocumentPreview: () => <div data-testid="document-preview" />,
 }));
@@ -132,7 +133,12 @@ describe("AdminInvoicesReview — issue #280", () => {
   });
 
   it("rolls back the optimistic removal when approval fails", async () => {
-    mockedApprove.mockRejectedValue(new Error("Network failure"));
+    let rejectApprove!: (error: Error) => void;
+    mockedApprove.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        rejectApprove = reject;
+      }) as never,
+    );
 
     render(<AdminInvoicesReview />, { wrapper: createWrapper() });
     await waitFor(() => screen.getByTestId(`approve-btn-inv-1`));
@@ -146,6 +152,7 @@ describe("AdminInvoicesReview — issue #280", () => {
     });
 
     // …then is restored after the API error (optimistic rollback).
+    rejectApprove(new Error("Network failure"));
     await waitFor(() => {
       expect(screen.getByTestId(`invoice-row-inv-1`)).toBeTruthy();
     });

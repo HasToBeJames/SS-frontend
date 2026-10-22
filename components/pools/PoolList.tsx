@@ -7,7 +7,7 @@ import { useInvoicePools } from "@/hooks/useInvoicePools";
 import { weightedAverageYield } from "@/lib/pools";
 
 /** Invoices / Pools filter tabs shared by the marketplace and the pool list. */
-export function MarketplaceViewTabs({ active }: { active: "invoices" | "pools" }) {
+export function MarketplaceViewTabs({ active }: { active: "invoices" | "pools" | "leaderboard" }) {
   const base = "rounded-full px-4 py-1.5 text-sm font-medium transition-colors";
   const on = "bg-primary text-primary-foreground";
   const off =
@@ -30,6 +30,14 @@ export function MarketplaceViewTabs({ active }: { active: "invoices" | "pools" }
         data-testid="marketplace-tab-pools"
       >
         Pools
+      </Link>
+      <Link
+        href="/marketplace/invoice-leaderboard"
+        aria-current={active === "leaderboard" ? "page" : undefined}
+        className={`${base} ${active === "leaderboard" ? on : off}`}
+        data-testid="marketplace-tab-leaderboard"
+      >
+        Leaderboard
       </Link>
     </nav>
   );

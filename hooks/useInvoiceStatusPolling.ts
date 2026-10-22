@@ -77,9 +77,9 @@ export function useInvoiceStatusPolling({
         notifiedTransitionsRef.current.add(transitionKey);
         toast.success(statusChangeMessage(status));
 
-        // Invalidate relevant caches on a status change: the detail record
-        // (refetched) and aggregate lists (marketplace/dashboard).
-        queryClient.invalidateQueries({ queryKey: ["invoice", invoiceId] });
+        // Invalidate aggregate lists on a status change. The detail record
+        // itself is already fresh from the poll that observed the change, so
+        // invalidating it would trigger a redundant extra fetch.
         queryClient.invalidateQueries({ queryKey: ["invoices"] });
       }
     }

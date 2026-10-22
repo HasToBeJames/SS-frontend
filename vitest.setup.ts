@@ -53,3 +53,9 @@ if (typeof window !== "undefined" && !window.localStorage) {
     configurable: true,
   });
 }
+
+// jsdom does not implement scrollIntoView, which the admin users table calls
+// when a dropdown opens. A no-op keeps those interactions testable.
+if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}

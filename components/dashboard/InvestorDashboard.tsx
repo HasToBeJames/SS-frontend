@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { TrendingUp, DollarSign, FileText, Clock, ExternalLink, Plus, BarChart2 } from "lucide-react";
+import { TrendingUp, DollarSign, FileText, Clock, ExternalLink, Plus, BarChart2, Bot } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { usePortfolioSummary, useRecentActivity, useUpcomingMaturities } from "@
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Money, ExchangeRateDisclaimer } from "@/components/currency";
+import { AccreditationRenewalBanner } from "@/components/investor/AccreditationRenewalBanner";
 
 export function InvestorDashboard() {
   const { data: portfolio, isLoading: portfolioLoading } = usePortfolioSummary();
@@ -28,6 +29,7 @@ export function InvestorDashboard() {
 
   return (
     <div className="space-y-6">
+      <AccreditationRenewalBanner />
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground mt-1">Welcome back! Here&apos;s an overview of your portfolio.</p>
@@ -120,7 +122,7 @@ export function InvestorDashboard() {
         </Card>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Button asChild className="h-20 flex-col gap-2">
           <Link href="/marketplace">
             <BarChart2 className="h-8 w-8" />
@@ -140,6 +142,13 @@ export function InvestorDashboard() {
             <Plus className="h-8 w-8" />
             <span className="font-semibold">Manage Listings</span>
             <span className="text-sm text-muted-foreground">Track your watchlist</span>
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="h-20 flex-col gap-2">
+          <Link href="/settings#auto-invest">
+            <Bot className="h-8 w-8" />
+            <span className="font-semibold">Auto-invest</span>
+            <span className="text-sm text-muted-foreground">Configure automatic investing</span>
           </Link>
         </Button>
       </div>

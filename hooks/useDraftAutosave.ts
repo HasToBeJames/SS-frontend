@@ -36,8 +36,8 @@ export function useDraftAutosave<T>({
     error: null,
   });
 
-  const debounceTimerRef = useRef<NodeJS.Timeout>();
-  const intervalRef = useRef<NodeJS.Timeout>();
+  const debounceTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const intervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const lastSavedDataRef = useRef<T>(formData);
 
   const performSave = useCallbackReact(async () => {

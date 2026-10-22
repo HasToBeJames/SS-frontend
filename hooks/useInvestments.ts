@@ -9,6 +9,7 @@ import { getNetwork, getExplorerUrl } from "@/lib/stellar";
 import { investErrorMessage, type InvestCurrency } from "@/lib/investCurrency";
 import { INVOICES_QUERY_KEY } from "./useInvoices";
 import { PORTFOLIO_QUERY_KEY } from "./usePortfolio";
+import { ONBOARDING_BONUS_QUERY_KEY } from "./useOnboardingBonus";
 
 interface InvestMutationVars {
   invoiceId: string;
@@ -113,6 +114,7 @@ export function useInvestMutation() {
       queryClient.invalidateQueries({ queryKey: ["invoice", invoiceId] });
       queryClient.invalidateQueries({ queryKey: INVOICES_QUERY_KEY });
       queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ONBOARDING_BONUS_QUERY_KEY });
     },
   });
 
@@ -209,6 +211,33 @@ export function useTransferFractionsMutation() {
 
     onError: () => {
       toast.error("Fraction transfer failed");
+    },
+  });
+}
+
+interface TopUpMutationVars {
+  invoiceId: string;
+  amount: number;
+}
+
+/**
+ * Increases an existing position by committing additional funds to an invoice.
+ * Reuses the invest endpoint; the contract treats it as another commitment.
+ */
+export function useTopUpMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ invoiceId, amount }: TopUpMutationVars) =>
+      investInInvoice(invoiceId, amount),
+    onSuccess: (_data, { invoiceId }) => {
+      toast.success("Top-up submitted successfully");
+      queryClient.invalidateQueries({ queryKey: ["invoice", invoiceId] });
+      queryClient.invalidateQueries({ queryKey: INVOICES_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEY });
+    },
+    onError: () => {
+      toast.error("Top-up failed");
     },
   });
 }

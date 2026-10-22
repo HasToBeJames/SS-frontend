@@ -16,7 +16,7 @@ const TABS = [
 
 const SECONDARY_LINKS = [
   { href: "/marketplace/resale", label: "Secondary market" },
-  { href: "/investor/watchlist", label: "Watchlist" },
+  { href: "/watchlist", label: "Watchlist" },
   { href: "/transactions", label: "Transactions" },
   { href: "/investor/keys", label: "Keys" },
   { href: "/kyc", label: "KYC" },
