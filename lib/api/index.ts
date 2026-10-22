@@ -167,6 +167,20 @@ export async function fetchIssuerCreditScore(wallet: string): Promise<IssuerCred
   return res.json();
 }
 
+export interface DynamicYieldResponse {
+  current_rate: number;
+  base_rate: number;
+  settlement_count: number;
+  adjustment_history: { rate: number; effective_at: string; reason?: string }[];
+}
+
+export async function fetchDynamicYield(wallet: string): Promise<DynamicYieldResponse | null> {
+  const res = await fetch(`${API_BASE}/issuers/${encodeURIComponent(wallet)}/dynamic-yield`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("Failed to fetch issuer yield history");
+  return res.json();
+}
+
 export interface InvoicesResponse {
   invoices: Invoice[];
   has_more: boolean;
@@ -2709,6 +2723,7 @@ export async function fetchTransferRestriction(
   const raw = await res.json();
   const restriction = (raw.restriction ?? null) as TransferRestrictionType | null;
   return { allowed: raw.allowed !== false && !restriction, restriction };
+}
 /* ─── Auto-invest (#476) ───────────────────────────────────────────────────
  * The rule lives on-chain: writes hit `set_auto_invest_rule`, the kill switch
  * hits `disable_auto_invest`, and the activity list is the `AutoInvestExecuted`

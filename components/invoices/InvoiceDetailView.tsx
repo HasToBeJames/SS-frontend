@@ -59,6 +59,7 @@ import { Money } from "@/components/currency";
 import { CurrencyToggle } from "@/components/layout/CurrencyToggle";
 import { InvoiceGreylistStatus } from "@/components/invoices/InvoiceGreylistStatus";
 import { ImpactReport } from "@/components/invoices/ImpactReport";
+import { DynamicYieldCard } from "@/components/invoices/DynamicYieldCard";
 
 function InvoiceDetailSkeleton() {
   return (
@@ -435,6 +436,8 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
       )}
 
       <OrderBookDepthChart invoiceId={invoice.id} />
+
+      <DynamicYieldCard wallet={invoice.seller} invoiceRate={invoice.yield_percentage} />
 
       {/* Invest CTA — KYC gated. */}
       {isOpenForInvestment ? (
