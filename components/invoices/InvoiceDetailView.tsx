@@ -56,6 +56,7 @@ import { truncateAddress } from "@/lib/stellar";
 import { DEFAULT_MIN_INVESTMENT } from "@/lib/invoiceDefaults";
 import { Money } from "@/components/currency";
 import { CurrencyToggle } from "@/components/layout/CurrencyToggle";
+import { DynamicYieldCard } from "@/components/invoices/DynamicYieldCard";
 
 function InvoiceDetailSkeleton() {
   return (
@@ -423,6 +424,8 @@ export function InvoiceDetailView({ invoiceId }: InvoiceDetailViewProps) {
       )}
 
       <OrderBookDepthChart invoiceId={invoice.id} />
+
+      <DynamicYieldCard wallet={invoice.seller} invoiceRate={invoice.yield_percentage} />
 
       {/* Invest CTA — KYC gated. */}
       {isOpenForInvestment ? (

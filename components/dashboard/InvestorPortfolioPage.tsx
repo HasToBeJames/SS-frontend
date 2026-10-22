@@ -15,6 +15,7 @@ import { FractionTransferModal } from "@/components/dashboard/FractionTransferMo
 import { SettlementCountdown } from "@/components/marketplace/SettlementCountdown";
 import { Download, ExternalLink } from "lucide-react";
 import { PortfolioRiskIndicator } from "@/components/invoices/InvoiceRiskAlert";
+import { ListPositionButton } from "@/components/dashboard/ListPositionButton";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -153,7 +154,7 @@ function HoldingsTab() {
                 </td>
                 <td className="p-3 text-right">
                   <div className="flex justify-end">
-                    <FractionTransferModal position={pos} />
+                    <div className="flex gap-2"><FractionTransferModal position={pos} /><ListPositionButton position={pos} /></div>
                   </div>
                 </td>
               </tr>
